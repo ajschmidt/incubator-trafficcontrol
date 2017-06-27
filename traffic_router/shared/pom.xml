@@ -93,6 +93,11 @@ under the License.
 			<groupId>junit</groupId>
 			<artifactId>junit</artifactId>
 		</dependency>
+		<dependency>
+			<groupId>org.bouncycastle</groupId>
+			<artifactId>bcprov-jdk15on</artifactId>
+			<version>1.57</version>
+		</dependency>
 	</dependencies>
 
 
