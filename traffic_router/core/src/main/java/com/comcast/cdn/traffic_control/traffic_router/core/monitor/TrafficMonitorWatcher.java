@@ -61,7 +61,7 @@ public class TrafficMonitorWatcher implements ApplicationListener<ApplicationCon
 	private String monitorProperties;
 	private static boolean bootstrapped = false;
 	private static boolean localConfig = false;
-	private static List<String> onlineMonitors = new ArrayList<String>();
+	private static List<String> onlineMonitors = new ArrayList<>();
 	private static String[] hosts;
 	private static Object hostSync = new Object();
 	private static Object monitorSync = new Object();
@@ -111,9 +111,11 @@ public class TrafficMonitorWatcher implements ApplicationListener<ApplicationCon
 		final AbstractUpdatable crHandler = new AbstractUpdatable() {
 			@Override
 			public boolean update(final String configStr) {
+				LOGGER.info("UPDATE");
+				System.out.println("UPDATE");
 				try {
 					try {
-						return configHandler.processConfig(configStr);
+						return configHandler.processConfig(configStr, null );
 					} catch (JsonUtilsException e) {
 						LOGGER.warn(e, e);
 					}
@@ -126,8 +128,9 @@ public class TrafficMonitorWatcher implements ApplicationListener<ApplicationCon
 			public String toString() {return "config listener";}
 			@Override
 			public boolean noChange() {
+				LOGGER.info("NOCHANGE");
 				try {
-					configHandler.processConfig(null);
+					configHandler.processConfig(null,null);
 				} catch (Exception e) {
 					LOGGER.warn(e, e);
 				}
@@ -147,6 +150,7 @@ public class TrafficMonitorWatcher implements ApplicationListener<ApplicationCon
 			}
 		};
 
+		LOGGER.info("ready processConfig");
 		processConfig();
 
 		crUpdater = new PeriodicResourceUpdater(crHandler, new TrafficMonitorResourceUrl(this, configUrl), databasesDirectory.resolve(configFile).toString(), configRefreshPeriod, true);

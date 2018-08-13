@@ -165,4 +165,11 @@ public class CacheRegister implements CacheLocationManager {
 		this.stats = stats;
 	}
 
+	public TreeSet<DeliveryServiceMatcher> getDnsDeliveryServiceMatchers() {
+		return dnsServiceMatchers;
+	}
+
+	public TreeSet<DeliveryServiceMatcher> getHttpDeliveryServiceMatchers() {
+		return httpServiceMatchers;
+	}
 }

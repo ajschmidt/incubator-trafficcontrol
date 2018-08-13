@@ -23,14 +23,7 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.UnknownHostException;
 import java.security.GeneralSecurityException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.Iterator;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -76,6 +69,8 @@ public class DeliveryService {
 	private final JsonNode soa;
 	@JsonIgnore
 	private final JsonNode props;
+	@JsonIgnore
+	private final JsonNode matchsets;
 	private boolean isDns;
 	private final String routingName;
 	private final boolean shouldAppendQueryString;
@@ -95,6 +90,13 @@ public class DeliveryService {
 	private final boolean acceptHttps;
 	private final boolean redirectToHttps;
 	private final DeepCachingType deepCache;
+
+	public JsonNode getMatchsets() {
+		return matchsets;
+	}
+
+	//private Date modified;
+	//private Date anyModified;
 
 	public enum DeepCachingType {
 		NEVER,
@@ -161,6 +163,8 @@ public class DeliveryService {
 		} finally {
 			this.deepCache = dct;
 		}
+
+		this.matchsets = dsJo.get( "matchsets");
 	}
 
 	public String getId() {
@@ -645,6 +649,9 @@ public class DeliveryService {
 
 	public boolean isSslReady() {
 		return sslEnabled && hasX509Cert;
+	}
+	public boolean isAcceptHttps() {
+		return acceptHttps;
 	}
 
 	public boolean isAcceptHttp() {
