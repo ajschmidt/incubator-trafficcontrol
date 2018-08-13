@@ -171,4 +171,19 @@ public class CacheRegister implements CacheLocationManager {
 	public TreeSet<DeliveryServiceMatcher> getHttpDeliveryServiceMatchers() {
 		return httpServiceMatchers;
 	}
+
+	public void shallowCopy(final CacheRegister srcCr) {
+		this.config = srcCr.config;
+		this.stats = srcCr.stats;
+		this.trafficRouters = srcCr.trafficRouters;
+		this.allCaches = new HashMap<String, Cache>();
+		this.allCaches.putAll(srcCr.allCaches);
+		this.configuredLocations.putAll(srcCr.configuredLocations);
+		this.dnsServiceMatchers = new TreeSet<>();
+		this.dnsServiceMatchers.addAll(srcCr.dnsServiceMatchers);
+		this.dsMap = new HashMap<>();
+		this.dsMap.putAll(srcCr.dsMap);
+		this.httpServiceMatchers = new TreeSet<>();
+		this.httpServiceMatchers.addAll(srcCr.httpServiceMatchers);
+	}
 }

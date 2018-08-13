@@ -15,6 +15,37 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.config;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache.DeliveryServiceReference;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryServiceMatcher;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryServiceMatcher.Type;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringWatcher;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIp;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpConfigUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpDatabaseUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.DeepNetworkUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationsWatcher;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.GeolocationDatabaseUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNode;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.RegionalGeoUpdater;
+import com.comcast.cdn.traffic_control.traffic_router.core.monitor.TrafficMonitorWatcher;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
+import com.comcast.cdn.traffic_control.traffic_router.core.secure.CertificatesPoller;
+import com.comcast.cdn.traffic_control.traffic_router.core.secure.CertificatesPublisher;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.log4j.Logger;
+
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -35,39 +66,6 @@ import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringWatcher;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationsWatcher;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.GeolocationDatabaseUpdater;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNode;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkUpdater;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.DeepNetworkUpdater;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.RegionalGeoUpdater;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.secure.CertificatesPoller;
-import com.comcast.cdn.traffic_control.traffic_router.core.secure.CertificatesPublisher;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.log4j.Logger;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache.DeliveryServiceReference;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryServiceMatcher;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryServiceMatcher.Type;
-import com.comcast.cdn.traffic_control.traffic_router.core.monitor.TrafficMonitorWatcher;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker;
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIp;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpConfigUpdater;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpDatabaseUpdater;
 
 @SuppressWarnings("PMD.TooManyFields")
 public class ConfigHandler {
@@ -104,7 +102,6 @@ public class ConfigHandler {
 
 	private final static String NEUSTAR_POLLING_URL = "neustar.polling.url";
 	private final static String NEUSTAR_POLLING_INTERVAL = "neustar.polling.interval";
-
 	private final static String LOCALIZATION_METHODS = "localizationMethods";
 
 	public String getConfigDir() {
@@ -118,10 +115,12 @@ public class ConfigHandler {
 	public GeolocationDatabaseUpdater getGeolocationDatabaseUpdater() {
 		return geolocationDatabaseUpdater;
 	}
-	public NetworkUpdater getNetworkUpdater () {
+
+	public NetworkUpdater getNetworkUpdater() {
 		return networkUpdater;
 	}
-	public DeepNetworkUpdater getDeepNetworkUpdater () {
+
+	public DeepNetworkUpdater getDeepNetworkUpdater() {
 		return deepNetworkUpdater;
 	}
 
@@ -150,33 +149,33 @@ public class ConfigHandler {
 		}
 
 		Date date;
+		final ObjectMapper mapper = new ObjectMapper();
+		final JsonNode jo = mapper.readTree(snapJson);
+		final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
+		final ObjectMapper compMapper = new ObjectMapper();
+		JsonNode cjo = null;
+		if (compJson != null) {
+			cjo = compMapper.readTree(compJson);
+		}
+		// Check to see if this is a new Snapshot
+		final long sts = getSnapshotTimestamp(stats);
+		date = new Date(sts * 1000L);
+		if (sts <= getLastSnapshotTimestamp()) {
+			cancelled.set(false);
+			isProcessing.set(false);
+			publishStatusQueue.clear();
+			LOGGER.info("Exiting processConfig: Incoming CrConfig snapshot timestamp (" + sts + ") is older than " +
+					"the loaded timestamp (" + getLastSnapshotTimestamp() + "); unable to process");
+			return false;
+		}
 		synchronized (configSync) {
-			final ObjectMapper mapper = new ObjectMapper();
-			final JsonNode jo = mapper.readTree(snapJson);
-			final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
-			final ObjectMapper compMapper = new ObjectMapper();
-			JsonNode cjo = null;
-			if (compJson != null) {
-				cjo = compMapper.readTree(compJson);
-			}
-			// Check to see if this is a new Snapshot
-			final long sts = getSnapshotTimestamp(stats);
-			date = new Date(sts * 1000L);
-			if (sts <= getLastSnapshotTimestamp()) {
-				cancelled.set(false);
-				isProcessing.set(false);
-				publishStatusQueue.clear();
-				LOGGER.info("Exiting processConfig: Incoming CrConfig snapshot timestamp (" + sts + ") is older than " +
-						"the loaded timestamp (" + getLastSnapshotTimestamp() + "); unable to process");
-				return false;
-			}
 			try {
 				// Search for updates, adds and deletes to delivery services
 				final SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor
 						.diffCrConfigs(jo, cjo);
 
-				if (snapshotEventsProcessor.shouldLoadAll()) {
-					if (loadEntireSnapshot(jo, snapshotEventsProcessor)) {
+				if (snapshotEventsProcessor.shouldReloadConfig()) {
+					if (initializeAll(jo, snapshotEventsProcessor)) {
 						ConfigHandler.setLastSnapshotTimestamp(sts);
 						return true;
 					}
@@ -192,22 +191,23 @@ public class ConfigHandler {
 				cancelled.set(false);
 				publishStatusQueue.clear();
 			}
-			return false;
 		}
+		return false;
 	}
+
 
 	@SuppressWarnings({"PMD.AvoidCatchingThrowable"})
 	private boolean processChangeEvents(final JsonNode jo,
 	                                    final SnapshotEventsProcessor snapshotEventsProcessor)
 			throws ParseException, JsonUtilsException, IOException {
 		LOGGER.debug("In processChangeEvents");
-		CacheRegister cacheRegister = null;
+		final CacheRegister cacheRegister = new CacheRegister();
 		if (trafficRouterManager.getTrafficRouter() != null) {
-			cacheRegister = trafficRouterManager.getTrafficRouter().getCacheRegister();
-		} else {
-			cacheRegister = new CacheRegister();
+			final CacheRegister prevCr = trafficRouterManager.getTrafficRouter().getCacheRegister();
+			cacheRegister.shallowCopy(prevCr);
 		}
 		final JsonNode config = JsonUtils.getJsonNode(jo, CONFIG_KEY);
+		cacheRegister.setConfig(config);
 		parseRegionalGeoConfig(config, snapshotEventsProcessor);
 		parseAnonymousIpConfig(config, snapshotEventsProcessor);
 		updateCertsPublisher(snapshotEventsProcessor);
@@ -217,11 +217,13 @@ public class ConfigHandler {
 			return false;
 		}
 		// updates, creates and removes the DeliveryServices in cacheRegister
-		synchronized (cacheRegister) {
-			parseDeliveryServiceMatchSets(snapshotEventsProcessor, cacheRegister);
-			parseCacheConfig(snapshotEventsProcessor, cacheRegister);
-			trafficRouterManager.updateZones(snapshotEventsProcessor);
+		parseDeliveryServiceMatchSets(snapshotEventsProcessor, cacheRegister);
+		parseCacheConfig(snapshotEventsProcessor, cacheRegister);
+
+		synchronized (this) {
+			trafficRouterManager.setCacheRegister(cacheRegister, snapshotEventsProcessor);
 		}
+
 		trafficRouterManager.getTrafficRouter().configurationChanged();
 		NetworkNode.getInstance().clearCacheLocations();
 		NetworkNode.getDeepInstance().clearCacheLocations(true);
@@ -288,7 +290,7 @@ public class ConfigHandler {
 
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity", "PMD.AvoidCatchingThrowable"})
-	private boolean loadEntireSnapshot(final JsonNode jo, final SnapshotEventsProcessor snapshotEventsProcessor )
+	private boolean initializeAll (final JsonNode jo, final SnapshotEventsProcessor snapshotEventsProcessor )
 			throws JsonUtilsException, ParseException, IOException {
 		final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
 		final JsonNode config = JsonUtils.getJsonNode(jo, CONFIG_KEY);
@@ -364,9 +366,11 @@ public class ConfigHandler {
 	public void setGeolocationDatabaseUpdater(final GeolocationDatabaseUpdater geolocationDatabaseUpdater) {
 		this.geolocationDatabaseUpdater = geolocationDatabaseUpdater;
 	}
+
 	public void setNetworkUpdater(final NetworkUpdater nu) {
 		this.networkUpdater = nu;
 	}
+
 	public void setDeepNetworkUpdater(final DeepNetworkUpdater dnu) {
 		this.deepNetworkUpdater = dnu;
 	}
@@ -378,7 +382,7 @@ public class ConfigHandler {
 	public void setAnonymousIpConfigUpdater(final AnonymousIpConfigUpdater anonymousIpConfigUpdater) {
 		this.anonymousIpConfigUpdater = anonymousIpConfigUpdater;
 	}
-	
+
 	public void setAnonymousIpDatabaseUpdater(final AnonymousIpDatabaseUpdater anonymousIpDatabaseUpdater) {
 		this.anonymousIpDatabaseUpdater = anonymousIpDatabaseUpdater;
 	}
@@ -422,7 +426,7 @@ public class ConfigHandler {
 			return false;
 		});
 		// remove deleted caches from locations
-		// this works because 'loc.getCaches()' makes a copy
+		// this works because 'loc.getCaches()' makes a shallowCopy
 		final Set<CacheLocation> existingLocations = cacheRegister.getCacheLocations();
 		existingLocations.forEach(loc->{
 			loc.getCaches().forEach(cacheEntry-> {
@@ -760,7 +764,6 @@ public class ConfigHandler {
 	 * changed.
 	 *
 	 * @param config
-	 *            the {@link TrafficRouterConfiguration}
 	 * @throws JsonUtilsException
 	 */
 	private void parseGeolocationConfig(final JsonNode config) throws JsonUtilsException {

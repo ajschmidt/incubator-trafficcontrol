@@ -53,7 +53,7 @@ import static org.springframework.util.SocketUtils.findAvailableUdpPort;
 	DeliveryServicesTest.class,
 	LocationsTest.class,
 	RouterTest.class,
-	RouterTestV14.class,
+	DsSnapTest.class,
 	StatsTest.class,
 	ZonesTest.class
 })

@@ -21,6 +21,7 @@ import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation.LocalizationMethod;
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
+import com.comcast.cdn.traffic_control.traffic_router.core.config.SnapshotEventsProcessor;
 import com.comcast.cdn.traffic_control.traffic_router.core.dns.DNSAccessRecord;
 import com.comcast.cdn.traffic_control.traffic_router.core.dns.ZoneManager;
 import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
@@ -72,16 +73,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
+import java.util.stream.Collectors;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 public class TrafficRouter {
 	public static final Logger LOGGER = Logger.getLogger(TrafficRouter.class);
 	private static final String XTC_STEERING_OPTION = "x-tc-steering-option";
 
 	private final CacheRegister cacheRegister;
-	private final ZoneManager zoneManager;
+	private ZoneManager zoneManager;
 	private final GeolocationService geolocationService;
 	private final GeolocationService geolocationService6;
 	private final AnonymousIpDatabaseService anonymousIpService;
@@ -103,30 +104,61 @@ public class TrafficRouter {
 			final GeolocationService geolocationService,
 			final GeolocationService geolocationService6,
 			final AnonymousIpDatabaseService anonymousIpService,
-			final StatTracker statTracker,
-			final TrafficOpsUtils trafficOpsUtils,
 			final FederationRegistry federationRegistry,
-			final TrafficRouterManager trafficRouterManager) throws IOException {
+			final TrafficRouterManager trafficRouterManager) {
 		this.cacheRegister = cr;
 		this.geolocationService = geolocationService;
 		this.geolocationService6 = geolocationService6;
 		this.anonymousIpService = anonymousIpService;
 		this.federationRegistry = federationRegistry;
 		this.consistentDNSRouting = JsonUtils.optBoolean(cr.getConfig(), "consistent.dns.routing");
-		this.zoneManager = new ZoneManager(this, statTracker, trafficOpsUtils, trafficRouterManager);
+		this.steeringRegistry = trafficRouterManager.getSteeringRegistry();
+	}
+
+	public static TrafficRouter newInstance ( final CacheRegister cr,
+	                                          final GeolocationService geolocationService,
+	                                          final GeolocationService geolocationService6,
+	                                          final AnonymousIpDatabaseService anonymousIpService,
+	                                          final StatTracker statTracker,
+	                                          final TrafficOpsUtils trafficOpsUtils,
+	                                          final FederationRegistry federationRegistry,
+	                                          final TrafficRouterManager trafficRouterManager,
+	                                          final SnapshotEventsProcessor snapshotEventsProcessor) throws IOException {
+		final TrafficRouter newTr = new TrafficRouter(cr, geolocationService,
+				geolocationService6, anonymousIpService, federationRegistry, trafficRouterManager);
+
+		JsonNode state = null;
+		if (trafficRouterManager != null) {
+			state = trafficRouterManager.getState();
+		}
+
+		if (state != null) {
+			try {
+				newTr.setState(state);
+			} catch (UnknownHostException e) {
+				LOGGER.warn(e, e);
+			}
+		}
 
 		if (cr.getConfig() != null) {
-			// maxmindDefaultOverride: {countryCode: , lat: , long: }
 			final JsonNode geolocations = cr.getConfig().get("maxmindDefaultOverride");
 			if (geolocations != null) {
 				for (final JsonNode geolocation : geolocations) {
 					final String countryCode = JsonUtils.optString(geolocation, "countryCode");
 					final double lat = JsonUtils.optDouble(geolocation, "lat");
 					final double longitude = JsonUtils.optDouble(geolocation, "long");
-					defaultGeolocationsOverride.put(countryCode, new Geolocation(lat, longitude));
+					newTr.defaultGeolocationsOverride.put(countryCode, new Geolocation(lat, longitude));
 				}
 			}
 		}
+
+		if (snapshotEventsProcessor == null || snapshotEventsProcessor.shouldReloadConfig()) {
+			newTr.zoneManager = ZoneManager.initialInstance(newTr, statTracker, trafficOpsUtils, trafficRouterManager);
+		} else {
+			newTr.zoneManager = ZoneManager.snapshotInstance(newTr, statTracker, snapshotEventsProcessor);
+		}
+
+		return newTr;
 	}
 
 	public ZoneManager getZoneManager() {
@@ -204,8 +236,8 @@ public class TrafficRouter {
 		return true;
 	}
 
-	protected static final String UNABLE_TO_ROUTE_REQUEST = "Unable to route request.";
-	protected static final String URL_ERR_STR = "Unable to create URL.";
+	public static final String UNABLE_TO_ROUTE_REQUEST = "Unable to route request.";
+	public static final String URL_ERR_STR = "Unable to create URL.";
 
 	public GeolocationService getGeolocationService() {
 		return geolocationService;

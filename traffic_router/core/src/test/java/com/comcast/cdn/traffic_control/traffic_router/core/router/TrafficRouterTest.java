@@ -81,10 +81,10 @@ public class TrafficRouterTest {
         federationRegistry = mock(FederationRegistry.class);
         when(federationRegistry.findInetRecords(anyString(), any(CidrAddress.class))).thenReturn(inetRecords);
 
-        trafficRouter = mock(TrafficRouter.class);
 
         CacheRegister cacheRegister = mock(CacheRegister.class);
         when(cacheRegister.getDeliveryService(any(HTTPRequest.class), eq(true))).thenReturn(deliveryService);
+        trafficRouter = mock(TrafficRouter.class);
 
         setInternalState(trafficRouter, "cacheRegister", cacheRegister);
         setInternalState(trafficRouter, "federationRegistry", federationRegistry);

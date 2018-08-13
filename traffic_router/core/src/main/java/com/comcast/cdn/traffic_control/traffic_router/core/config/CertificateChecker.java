@@ -79,35 +79,24 @@ public class CertificateChecker {
 			return true;
 		}
 
-		final JsonNode domains = deliveryService.getDomains();
+		final String domain = deliveryService.getDomain();
 
-		if (domains == null) {
+		if (domain == null) {
 			LOGGER.warn("Delivery service " + deliveryServiceId + " is not configured with any domains!");
 			return true;
 		}
 
-		if (domains.size() == 0) {
-			return true;
+		for (final CertificateData certificateData : certificateDataList) {
+			final String certificateDeliveryServiceId = certificateData.getDeliveryservice();
+			if ((deliveryServiceId == null) || deliveryServiceId.equals("")) {
+				LOGGER.error("DeliveryService name is blank for hostname '" +  certificateData.getHostname() + "', skipping.");
+			} else if ((certificateDeliveryServiceId != null) && (deliveryServiceId != null) && (certificateDeliveryServiceId.equals(deliveryServiceId))) {
+				LOGGER.debug("DService " + deliveryServiceId + " has certificate data for https");
+				return true;
+			}
 		}
 
-		for (final JsonNode domain : domains) {
-			final String domainStr = domain.asText("").replaceAll("^\\*\\.", "");
-			if (domainStr == null || domainStr.isEmpty()) {
-				continue;
-			}
-
-			for (final CertificateData certificateData : certificateDataList) {
-				final String certificateDeliveryServiceId = certificateData.getDeliveryservice();
-				if ((deliveryServiceId == null) || deliveryServiceId.equals("")) {
-					LOGGER.error("DeliveryService name is blank for hostname '" +  certificateData.getHostname() + "', skipping.");
-				} else if ((certificateDeliveryServiceId != null) && (deliveryServiceId != null) && (certificateDeliveryServiceId.equals(deliveryServiceId))) {
-					LOGGER.debug("DService " + deliveryServiceId + " has certificate data for https");
-					return true;
-				}
-			}
-			LOGGER.error("No certificate data for https " + deliveryServiceId + " domain " + domainStr);
-		}
-
+		LOGGER.error("No certificate data for https " + deliveryServiceId + " domain " + domain);
 		return false;
 	}
 

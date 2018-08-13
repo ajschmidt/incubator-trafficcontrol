@@ -78,8 +78,8 @@ public class SnapshotEventsProcessorTest {
 	@Test
 	public void mineEventsFromDBDiffsNoChanges() throws Exception {
 		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, null);
-		assertThat("LoadAll should be true because the snapshot does not have a snapshot config parameter.",
-				snapEvents.shouldLoadAll());
+		assertThat("Initialize should be true because the snapshot does not have a snapshot config parameter.",
+				snapEvents.shouldReloadConfig());
 		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
 		snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, baselineJo);
 		assertThat("No new, updated or deleted delivery services should have been loaded beacause the snapshots were " +
@@ -93,12 +93,13 @@ public class SnapshotEventsProcessorTest {
 
 	@Test
 	public void mineEventsFromDBNewUpdate() throws Exception {
+		int changeCnt = 15;
 		ConfigHandler.setLastSnapshotTimestamp(14650848001l);
 		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(updateJo,
 				baselineJo);
-		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
-		assertThat("18 Delivery services should have been updated but there were only "+snapEvents.getChangeEvents().size(),
-				snapEvents.getChangeEvents().size() == 18);
+		assertThat("Initialize should be false.", !snapEvents.shouldReloadConfig());
+		assertThat(String.valueOf(changeCnt)+" Delivery services should have been updated but there were only "+snapEvents.getChangeEvents().size(),
+				snapEvents.getChangeEvents().size() == changeCnt);
 		assertThat("1 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
 				snapEvents.getMappingEvents().size() == 1);
 	}
@@ -108,7 +109,7 @@ public class SnapshotEventsProcessorTest {
 
 		ConfigHandler.setLastSnapshotTimestamp(14650848001l);
 		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, baselineJo);
-		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
+		assertThat("Initialize should be false.", !snapEvents.shouldReloadConfig());
 		assertThat("1 Delivery services should have been added but there was "+snapEvents.getCreationEvents().size(),
 				snapEvents.getCreationEvents().size() == 1);
 		assertThat("4 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
@@ -119,7 +120,7 @@ public class SnapshotEventsProcessorTest {
 	public void diffCrConfigNoChanges() throws Exception {
 		ConfigHandler.setLastSnapshotTimestamp(14650848001l);
 		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(updateJo, updateJo);
-		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
+		assertThat("Initialize should be false.", !snapEvents.shouldReloadConfig());
 		assertThat("0 Delivery services should have been added but there was "+snapEvents.getCreationEvents().size(),
 				snapEvents.getCreationEvents().size() == 0);
 
@@ -147,8 +148,8 @@ public class SnapshotEventsProcessorTest {
 	public void getSSLEnabledChangeEvents_updated() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
 		List<DeliveryService> httpsDs = sep.getSSLEnabledChangeEvents();
-		assertThat("Expected to find 4 changed https delivery services but found " + httpsDs.size(),
-				httpsDs.size() == 4);
+		assertThat("Expected to find 3 changed https delivery services but found " + httpsDs.size(),
+				httpsDs.size() == 3);
 		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
 				httpsDs.toString().contains("http-only-test"));
 	}
@@ -166,15 +167,15 @@ public class SnapshotEventsProcessorTest {
 
 	@Test
 	public void getChangeEvents() throws Exception {
+		final int changeCnt = 15;
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
 		Map<String, DeliveryService> changes = sep.getChangeEvents();
-		assertThat("Expected to find 18 changed delivery services but found " + changes.size(), changes.size() == 18);
+		assertThat("Expected to find "+changeCnt+" changed delivery services but found " + changes.size(),
+				changes.size() == changeCnt);
 		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
 				changes.toString().contains("http-only-test"));
 		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
 				changes.toString().contains("https-only-test"));
-		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
-				changes.toString().contains("http-and-https-test"));
 		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
 				changes.toString().contains("http-to-https-test"));
 	}

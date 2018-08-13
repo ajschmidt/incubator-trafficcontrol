@@ -163,10 +163,11 @@ public final class SignatureManager {
 							}
 						}
 
+						List<String> changedKeys = null;
 						if (keyMap == null) {
 							// initial startup
 							keyMap = newKeyMap;
-						} else if (hasNewKeys(keyMap, newKeyMap)) {
+						} else if (!(changedKeys = hasNewKeys(keyMap, newKeyMap)).isEmpty()) {
 							// incoming key map has new keys
 							LOGGER.debug("Found new keys in incoming keyMap; rebuilding zone caches");
 							trafficRouterManager.trackEvent("newDnsSecKeysFound");
@@ -174,6 +175,8 @@ public final class SignatureManager {
 
 							if (reloadAll) {
 								getZoneManager().rebuildZoneCache();
+							} else {
+								getZoneManager().updateZoneCache(changedKeys);
 							}
 						} // no need to overwrite the keymap if they're the same, so no else leg
 					} else {
@@ -188,10 +191,13 @@ public final class SignatureManager {
 		};
 	}
 
-	private boolean hasNewKeys(final Map<String, List<DnsSecKeyPair>> keyMap, final Map<String, List<DnsSecKeyPair>> newKeyMap) {
+	private List<String> hasNewKeys(final Map<String, List<DnsSecKeyPair>> keyMap,
+	                                final Map<String, List<DnsSecKeyPair>> newKeyMap) {
+		final ArrayList<String> changedKeys = new ArrayList<>();
 		for (final String key : newKeyMap.keySet()) {
 			if (!keyMap.containsKey(key)) {
-				return true;
+				changedKeys.add(key);
+				continue;
 			}
 
 			for (final DnsSecKeyPair newKeyPair : newKeyMap.get(key)) {
@@ -205,13 +211,12 @@ public final class SignatureManager {
 				}
 
 				if (!matched) {
-					LOGGER.info("Found new or changed key for " + newKeyPair.getName());
-					return true; // has a new key because we didn't find a match
+					changedKeys.add(key);
 				}
 			}
 		}
 
-		return false;
+		return changedKeys;
 	}
 
 	private JsonNode fetchKeyPairData(final CacheRegister cacheRegister) {

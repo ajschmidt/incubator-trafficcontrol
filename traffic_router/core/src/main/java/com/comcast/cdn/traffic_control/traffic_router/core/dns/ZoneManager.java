@@ -82,7 +82,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-public class ZoneManager extends Resolver {
+public final class ZoneManager extends Resolver {
 	private static final Logger LOGGER = Logger.getLogger(ZoneManager.class);
 
 	private final TrafficRouter trafficRouter;
@@ -107,13 +107,18 @@ public class ZoneManager extends Resolver {
 		DYNAMIC, STATIC
 	}
 
-	public ZoneManager(final TrafficRouter tr, final StatTracker statTracker, final TrafficOpsUtils trafficOpsUtils,
-	                   final TrafficRouterManager trafficRouterManager) throws IOException {
+	private ZoneManager( final TrafficRouter tr, final StatTracker statTracker, final TrafficOpsUtils trafficOpsUtils,
+	                    final TrafficRouterManager trafficRouterManager) throws IOException {
 		initDnsRoutingNames(tr.getCacheRegister());
 		initTopLevelDomain(tr.getCacheRegister());
 		initSignatureManager(tr.getCacheRegister(), trafficOpsUtils, trafficRouterManager);
 		initZoneCache(tr);
 		this.trafficRouter = tr;
+		this.statTracker = statTracker;
+	}
+
+	private ZoneManager( final TrafficRouter trafficRouter,  final StatTracker statTracker) {
+		this.trafficRouter = trafficRouter;
 		this.statTracker = statTracker;
 	}
 
@@ -123,13 +128,53 @@ public class ZoneManager extends Resolver {
 		signatureManager.destroy();
 	}
 
-	public void processDsChanges(final SnapshotEventsProcessor snapshotEvents) {
+	/**
+	 * Use this factory method when Traffic Router is being initialized or in cases when the zone
+	 * caches need to be completely rebuilt.
+	 * @param tr The TrafficRouter instance containing a prepared CacheRegister
+	 * @param statTracker A StatsTracker instance for tracking statistics
+	 * @param trafficOpsUtils
+	 * @param trafficRouterManager The TrafficRouterManager which will eventually be managing the
+	 *                             TrafficRouter instance 'tr'.
+	 * @return a new instance of a ZoneManager with zone caches fully populated
+	 * @throws IOException
+	 */
+	public static ZoneManager initialInstance(final TrafficRouter tr, final StatTracker statTracker,
+	                        final TrafficOpsUtils trafficOpsUtils,
+                            final TrafficRouterManager trafficRouterManager) throws IOException {
+		return new ZoneManager( tr, statTracker, trafficOpsUtils, trafficRouterManager);
+	}
+
+	/**
+	 * Use this factory only to make changes to the zone caches and retrieve an associated ZoneManager. The
+	 * initialInstance method should have already been called at least once previously.
+	 * @param tr The TrafficRouter instance containing a CacheRegister prepared with the changes cooresponding
+	 *           to the changes that will be made in the zone caches.
+	 * @param statTracker A StatsTracker instance for tracking statistics
+	 * @param sep The SnapshotEventsProcessor containing the events representing the changes to be
+	 *            made to the zone caches
+	 * @return
+	 * @throws IOException
+	 */
+	public static ZoneManager snapshotInstance( final TrafficRouter tr, final StatTracker statTracker,
+        final SnapshotEventsProcessor sep) throws IOException {
+		final ZoneManager zmCopy = new ZoneManager( tr, statTracker);
+		if (ZoneManager.dynamicZoneCache == null || ZoneManager.zoneCache == null)
+		{
+			LOGGER.error("Called snapshotInstance without having ever called initialInstance. Attempting to correct.");
+			return null;
+		}
+		zmCopy.processChangeEvents(sep);
+		return zmCopy;
+	}
+
+	public void processChangeEvents(final SnapshotEventsProcessor snapshotEvents) {
 		final Map<String, DeliveryService> changeEvents = snapshotEvents.getChangeEvents();
 		final Map<String, DeliveryService> deleteEvents = snapshotEvents.getDeleteEvents();
 		final Set<String> dnsRoutingNames = getDnsRoutingNames();
 
 		changeEvents.forEach((dsid, ds) -> {
-			if (!dnsRoutingNames.contains(ds.getRoutingName())) {
+			if (!dnsRoutingNames.contains(ds.getRoutingName()) && ds.isDns()) {
 				dnsRoutingNames.add(ds.getRoutingName());
 			}
 		});
@@ -142,11 +187,24 @@ public class ZoneManager extends Resolver {
 		});
 
 		signatureManager.refreshKeyMap();
-		refreshZoneCache(snapshotEvents);
+		updateZoneCache(snapshotEvents.getChangeEvents());
 	}
 
 	protected void rebuildZoneCache() {
 		initZoneCache(trafficRouter);
+	}
+
+	protected void updateZoneCache(final List<String> zoneKeys) {
+		final CacheRegister cacheRegister = getTrafficRouter().getCacheRegister();
+		final Map<String, DeliveryService> deliveryServices = cacheRegister.getDeliveryServices();
+		final Map<String, DeliveryService> targetDServices = new HashMap<>();
+		deliveryServices.forEach((dsid, ds) -> {
+			if (zoneKeys.contains(ds.getDomain())) {
+				targetDServices.putIfAbsent(dsid, ds);
+			}
+		});
+
+		updateZoneCache(targetDServices);
 	}
 
 	private static void initDnsRoutingNames(final CacheRegister cacheRegister) {
@@ -177,15 +235,36 @@ public class ZoneManager extends Resolver {
 	}
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
-	protected void refreshZoneCache(final SnapshotEventsProcessor snep) {
+	protected void updateZoneCache(final Map<String, DeliveryService> changeEvents) {
 		synchronized (ZoneManager.class) {
-			final LoadingCache<ZoneKey, Zone> dzc = ZoneManager.dynamicZoneCache;
-			final LoadingCache<ZoneKey, Zone> zc = ZoneManager.zoneCache;
-			final ExecutorService initExecutor = Executors.newFixedThreadPool(2);
+			final TrafficRouter trafficRouter = getTrafficRouter();
+			final CacheRegister cacheRegister = trafficRouter.getCacheRegister();
+			final JsonNode config = cacheRegister.getConfig();
+			final String dspec = "expireAfterAccess=" + (JsonUtils
+					.optString(config, "zonemanager.dynamic.response.expiration", "300s")); // default to 5 minutes
+			final LoadingCache<ZoneKey, Zone> dzc = createZoneCache(ZoneCacheType.DYNAMIC, CacheBuilderSpec
+					.parse(dspec));
+			final LoadingCache<ZoneKey, Zone> zc = createZoneCache(ZoneCacheType.STATIC);
+			dzc.putAll(ZoneManager.dynamicZoneCache.asMap());
+			zc.putAll(ZoneManager.zoneCache.asMap());
+			final ExecutorService initExecutor = Executors.newFixedThreadPool(calcThreadPoolSize(config));
 
 			try {
 				LOGGER.info("Refreshing zone data");
-				generateNewZones(getTrafficRouter(), snep, zc, dzc, initExecutor);
+				final Map<String, List<Record>> zoneMap = new HashMap<String, List<Record>>();
+				final Map<String, DeliveryService> dsMap = new HashMap<String, DeliveryService>();
+
+				for (final DeliveryService ds : changeEvents.values()) {
+					final String domain = ds.getDomain();
+
+					if (domain == null) {
+						continue;
+					}
+
+					dsMap.put(domain, ds);
+				}
+
+				loadZoneCacheFromDsMap(zoneMap, dsMap, cacheRegister, trafficRouter, zc, dzc, initExecutor);
 				initExecutor.shutdown();
 				initExecutor.awaitTermination(5, TimeUnit.MINUTES);
 				LOGGER.info("Zone refresh complete");
@@ -194,27 +273,35 @@ public class ZoneManager extends Resolver {
 			} catch (IOException ex) {
 				LOGGER.fatal("Caught fatal exception while generating zone data!", ex);
 			}
+
+			ZoneManager.dynamicZoneCache = dzc;
+			ZoneManager.zoneCache = zc;
 		}
 	}
 
-	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
+	private static int calcThreadPoolSize(final JsonNode config) {
+		int poolSize = 1;
+		final double scale = JsonUtils.optDouble(config, "zonemanager.threadpool.scale", 0.75);
+		final int cores = Runtime.getRuntime().availableProcessors();
+
+		if (cores > 2) {
+			final Double s = Math.floor((double) cores * scale);
+
+			if (s.intValue() > 1) {
+				poolSize = s.intValue();
+			}
+		}
+
+		return poolSize;
+	}
+
+	//@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
 	protected static void initZoneCache(final TrafficRouter tr) {
 		synchronized (ZoneManager.class) {
 			final CacheRegister cacheRegister = tr.getCacheRegister();
 			final JsonNode config = cacheRegister.getConfig();
 
-			int poolSize = 1;
-			final double scale = JsonUtils.optDouble(config, "zonemanager.threadpool.scale", 0.75);
-			final int cores = Runtime.getRuntime().availableProcessors();
-
-			if (cores > 2) {
-				final Double s = Math.floor((double) cores * scale);
-
-				if (s.intValue() > 1) {
-					poolSize = s.intValue();
-				}
-			}
-
+			final int poolSize = calcThreadPoolSize(config);
 			final ExecutorService initExecutor = Executors.newFixedThreadPool(poolSize);
 			final ExecutorService ze = Executors.newFixedThreadPool(poolSize);
 			final ScheduledExecutorService me = Executors
@@ -233,7 +320,7 @@ public class ZoneManager extends Resolver {
 
 			try {
 				LOGGER.info("Generating zone data");
-				generateZones(tr, zc, dzc, initExecutor);
+				loadAllZones(tr, zc, dzc, initExecutor);
 				initExecutor.shutdown();
 				initExecutor.awaitTermination(5, TimeUnit.MINUTES);
 				LOGGER.info("Zone generation complete");
@@ -332,11 +419,11 @@ public class ZoneManager extends Resolver {
 		return statTracker;
 	}
 
-	private static LoadingCache<ZoneKey, Zone> createZoneCache(final ZoneCacheType cacheType) {
+	static LoadingCache<ZoneKey, Zone> createZoneCache(final ZoneCacheType cacheType) {
 		return createZoneCache(cacheType, CacheBuilderSpec.parse(""));
 	}
 
-	private static LoadingCache<ZoneKey, Zone> createZoneCache(final ZoneCacheType cacheType,
+	static LoadingCache<ZoneKey, Zone> createZoneCache(final ZoneCacheType cacheType,
 	                                                           final CacheBuilderSpec spec) {
 		final RemovalListener<ZoneKey, Zone> removalListener = new RemovalListener<ZoneKey, Zone>() {
 			public void onRemoval(final RemovalNotification<ZoneKey, Zone> removal) {
@@ -391,31 +478,30 @@ public class ZoneManager extends Resolver {
 		return zone;
 	}
 
-	private static void generateZones(final TrafficRouter tr, final LoadingCache<ZoneKey, Zone> zc,
-	                                  final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor) throws
+	private static void loadAllZones(final TrafficRouter tr, final LoadingCache<ZoneKey, Zone> zc,
+	                                 final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor) throws
 			IOException {
 		final CacheRegister data = tr.getCacheRegister();
 		final Map<String, List<Record>> zoneMap = new HashMap<String, List<Record>>();
 		final Map<String, DeliveryService> dsMap = new HashMap<String, DeliveryService>();
 
 		for (final DeliveryService ds : data.getDeliveryServices().values()) {
-			final JsonNode domains = ds.getDomains();
+			final String domain = ds.getDomain();
 
-			if (domains == null) {
+			if (domain == null) {
 				continue;
 			}
 
-			addNames(ds, dsMap);
+			dsMap.put(domain, ds);
 		}
 
-
-		preloadCache(zoneMap, dsMap, data, tr, zc, dzc, initExecutor);
+		loadZoneCacheFromDsMap(zoneMap, dsMap, data, tr, zc, dzc, initExecutor);
 	}
 
-	private static void preloadCache(final Map<String, List<Record>> zoneMap, final Map<String, DeliveryService> dsMap,
-	                                 final CacheRegister data, final TrafficRouter tr,
-	                                 final LoadingCache<ZoneKey, Zone> zc,
-	                                 final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor) throws
+	private static void loadZoneCacheFromDsMap(final Map<String, List<Record>> zoneMap, final Map<String, DeliveryService> dsMap,
+	                                           final CacheRegister data, final TrafficRouter tr,
+	                                           final LoadingCache<ZoneKey, Zone> zc,
+	                                           final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor) throws
 			java.io.IOException {
 		final Map<String, List<Record>> superDomains = populateZoneMap(zoneMap, dsMap, data);
 		final List<Record> superRecords = fillZones(zoneMap, dsMap, tr, zc, dzc, initExecutor);
@@ -426,54 +512,6 @@ public class ZoneManager extends Resolver {
 				LOGGER.info("Publish this DS record in the parent zone: " + record);
 			}
 		}
-	}
-
-	private static void generateNewZones(final TrafficRouter tr,
-	                                     final SnapshotEventsProcessor snep,
-	                                     final LoadingCache<ZoneKey, Zone> zc,
-	                                     final LoadingCache<ZoneKey, Zone> dzc,
-	                                     final ExecutorService initExecutor) throws IOException {
-		final CacheRegister data = tr.getCacheRegister();
-		final Map<String, List<Record>> zoneMap = new HashMap<String, List<Record>>();
-		final Map<String, DeliveryService> dsMap = new HashMap<String, DeliveryService>();
-		final Map<String, DeliveryService> changeEvents = snep.getChangeEvents();
-
-		for (final DeliveryService ds : changeEvents.values()) {
-			final JsonNode domains = ds.getDomains();
-
-			if (domains == null) {
-				continue;
-			}
-
-			addNames(ds, dsMap);
-		}
-
-		preloadCache(zoneMap, dsMap, data, tr, zc, dzc, initExecutor);
-	}
-
-	private static void addNames(final DeliveryService ds, final Map<String, DeliveryService> dsMap) throws
-			IOException {
-
-		final JsonNode domains = ds.getDomains();
-
-		if (domains == null) {
-			return;
-		}
-
-		final String tld = getTopLevelDomain().toString(true); // Name.toString(true) - omit the trailing dot
-
-		for (final JsonNode domainNode : domains) {
-			String domain = domainNode.asText();
-
-			if (domain.endsWith("+")) {
-				domain = domain.replaceAll("\\+\\z", ".") + tld;
-			}
-
-			if (domain.endsWith(tld)) {
-				dsMap.put(domain, ds);
-			}
-		}
-
 	}
 
 	private static List<Record> fillZones(final Map<String, List<Record>> zoneMap,
@@ -732,9 +770,9 @@ public class ZoneManager extends Resolver {
 	}
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
-	private static final Map<String, List<Record>> populateZoneMap(final Map<String, List<Record>> zoneMap,
-	                                                               final Map<String, DeliveryService> dsMap,
-	                                                               final CacheRegister data) throws IOException {
+	private static Map<String, List<Record>> populateZoneMap(final Map<String, List<Record>> zoneMap,
+		final Map<String, DeliveryService> dsMap,
+		final CacheRegister data) throws IOException {
 		final Map<String, List<Record>> superDomains = new HashMap<String, List<Record>>();
 		for (final String domain : dsMap.keySet()) {
 			zoneMap.put(domain, new ArrayList<Record>());

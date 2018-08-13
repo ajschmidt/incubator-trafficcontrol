@@ -15,8 +15,7 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"]
       }
     },
     "edge-cache-001": {
@@ -34,8 +33,8 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
+        "dns-test": ["edge.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-002": {
@@ -53,8 +52,8 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-002.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-002.http-only-test.thecdn.example.com"],
+        "dns-test": ["edge.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-010": {
@@ -78,7 +77,7 @@
           "edge-cache-010.steering-target-1-b-b.thecdn.example.com"
         ]
       }
-    },    
+    },
     "edge-cache-011": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
@@ -96,8 +95,8 @@
         "steering-test-1": ["edge-cache-011.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-011.steering-target-2.thecdn.example.com"],
         "steering-target-1": [
-          "edge-cache-011.steering-target-1-b-b.thecdn.example.com",
-          "edge-cache-011.steering-target-1.thecdn.example.com"
+          "edge-cache-011.steering-target-1.thecdn.example.com",
+          "edge-cache-011.steering-target-1-b-b.thecdn.example.com"
         ]
       }
     },
@@ -145,7 +144,7 @@
         "steering-target-4": ["edge-cache-020.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-020.steering-target-3.thecdn.example.com"]
       }
-    },    
+    },
     "edge-cache-021": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
@@ -220,7 +219,7 @@
         "steering-target-4": ["edge-cache-030.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-030.steering-target-3.thecdn.example.com"]
       }
-    },    
+    },
     "edge-cache-031": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
@@ -488,7 +487,7 @@
       "location": "dc-chicago",
       "ip6": "2001:dead:beef:123:1::2",
       "api.port": "3333",
-      "fqdn": "testing-tr-02.cdn.example.com",
+      "fqdn": "testing-tr-02.thecdn.example.com",
       "ip": "12.34.20.2",
       "profile": "ROUTER_TEST"
     },
@@ -498,7 +497,7 @@
       "location": "dc-chicago",
       "ip6": "2001:dead:beef:123:1::1",
       "api.port": "3333",
-      "fqdn": "testing-tr-01.cdn.example.com",
+      "fqdn": "testing-tr-01.thecdn.example.com",
       "ip": "12.34.20.1",
       "profile": "ROUTER_TEST"
     }
@@ -525,11 +524,13 @@
   },
   "deliveryServices": {
     "https-only-test": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
+      "modified": "2018-11-09T01:46:39.283473Z",
       "protocol": {
-        "acceptHttp" : "true",
+        "acceptHttp" : "false",
         "acceptHttps" : "true",
-        "redirectToHttps" : "true"
+        "redirectToHttps" : "false"
       },
       "domains": ["https-only-test.thecdn.example.com"],
       "missLocation": {
@@ -568,6 +569,8 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "client-steering-test-1": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
+	  "modified": "1465088800",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -577,8 +580,8 @@
       "requestHeaders": ["X-MoneyTrace"],
       "domains": ["client-steering-test-1.thecdn.example.com"],
       "missLocation": {
-        "long": "-97.627778",
-        "lat": "31.881944"
+        "long": "-87.627778",
+        "lat": "41.881944"
       },
       "ttls": {
         "AAAA": "3600",
@@ -617,6 +620,8 @@
       "staticDnsEntries": []
     },
     "client-steering-test-2": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
+      "modified": "1465088800",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -630,7 +635,7 @@
         "lat": "41.881944"
       },
       "ttls": {
-        "AAAA": "3666",
+        "AAAA": "3600",
         "SOA": "7200",
         "A": "3600",
         "NS": "3600"
@@ -666,7 +671,9 @@
       "staticDnsEntries": []
     },
     "client-steering-target-1": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -674,7 +681,7 @@
       },
       "requestHeaders": [
         "User-Agent",
-        "MeyeHeader",
+        "MyHeader",
         "Date"
       ],
       "dispersion": {
@@ -716,7 +723,9 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-2": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -728,7 +737,7 @@
         "Date"
       ],
       "dispersion": {
-        "limit": 2,
+        "limit": 1,
         "shuffled": "true"
       },
       "domains": ["client-steering-target-2.thecdn.example.com"],
@@ -767,6 +776,8 @@
     },
     "client-steering-target-3": {
       "sslEnabled": "false",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -778,7 +789,7 @@
         "Date"
       ],
       "dispersion": {
-        "limit": 3,
+        "limit": 1,
         "shuffled": "true"
       },
       "domains": ["client-steering-target-3.thecdn.example.com"],
@@ -816,7 +827,9 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-4": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -828,7 +841,7 @@
         "Date"
       ],
       "dispersion": {
-        "limit": 2,
+        "limit": 1,
         "shuffled": "true"
       },
       "domains": ["client-steering-target-4.thecdn.example.com"],
@@ -866,7 +879,9 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-1": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -875,7 +890,7 @@
       "requestHeaders": ["X-MoneyTrace"],
       "domains": ["steering-test-1.thecdn.example.com"],
       "missLocation": {
-        "long": "-87.727778",
+        "long": "-87.627778",
         "lat": "41.881944"
       },
       "ttls": {
@@ -928,7 +943,9 @@
       ]
     },
     "steering-target-2": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -975,14 +992,16 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-2": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
         "redirectToHttps" : "false"
       },
       "dispersion": {
-        "limit": 3,
+        "limit": 2,
         "shuffled": "true"
       },
       "domains": ["test.thecdn.example.com"],
@@ -1022,7 +1041,9 @@
       "ip6RoutingEnabled": "true"
     },
     "federation-test": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1049,7 +1070,7 @@
         }
       ],
       "ttls": {
-        "AAAA": "40",
+        "AAAA": "30",
         "SOA": "7200",
         "A": "30",
         "NS": "3600"
@@ -1077,7 +1098,9 @@
       "ip6RoutingEnabled": "true"
     },
     "steering-target-1": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1085,7 +1108,7 @@
       },
       "requestHeaders": [
         "User-Agent",
-        "myHeader",
+        "MyHeader",
         "Date"
       ],
       "dispersion": {
@@ -1134,7 +1157,9 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-4": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1160,7 +1185,7 @@
       }],
       "regionalGeoBlocking": "false",
       "ttls": {
-        "AAAA": "4600",
+        "AAAA": "3600",
         "SOA": "7200",
         "A": "3600",
         "NS": "3600"
@@ -1181,7 +1206,9 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-3": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1229,10 +1256,12 @@
       "ip6RoutingEnabled": "false"
     },
     "http-and-https-test": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
+      "modified": "1465088800",
       "protocol": {
-        "acceptHttps" : "true",
         "acceptHttp" : "true",
+        "acceptHttps" : "true",
         "redirectToHttps" : "false"
       },
       "domains": ["http-and-https-test.thecdn.example.com"],
@@ -1272,7 +1301,9 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-to-https-test": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -1280,7 +1311,7 @@
       },
       "domains": ["http-to-https-test.thecdn.example.com"],
       "missLocation": {
-        "long": "-77.627778",
+        "long": "-87.627778",
         "lat": "41.881944"
       },
       "ttls": {
@@ -1292,7 +1323,7 @@
       "ttl": "3600",
       "ip6RoutingEnabled": "false",
       "dispersion": {
-        "limit": 2,
+        "limit": 1,
         "shuffled": "true"
       },
       "coverageZoneOnly": "false",
@@ -1315,7 +1346,9 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-only-test": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
+      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1332,7 +1365,7 @@
         "A": "3600",
         "NS": "3600"
       },
-      "ttl": "3700",
+      "ttl": "3600",
       "ip6RoutingEnabled": "false",
       "dispersion": {
         "limit": 1,
@@ -1341,9 +1374,7 @@
       "coverageZoneOnly": "false",
       "routingName": "tr",
       "regionalGeoBlocking": "false",
-      "matchsets": [
-        null,
-        {
+      "matchsets": [{
         "protocol": "HTTP",
         "matchlist": [{
           "regex": ".*\\.http-only-test\\..*",
@@ -1360,11 +1391,12 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "dns-test": {
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
+      "modified": "1465088800",
       "bypassDestination": {
         "DNS": {
-          "ttl": "33",
-          "cname": "www.example.com"
+          "ttl": "30"
         }
       },
       "domains": [
@@ -1380,7 +1412,7 @@
           }]
       }],
       "ttls": {
-        "AAAA": "40",
+        "AAAA": "30",
         "SOA": "7200",
         "A": "30",
         "NS": "3600"
@@ -1405,9 +1437,9 @@
   "stats": {
     "tm_version": "1.5.0-3027.8d600a8e",
     "CDN_name": "thecdn",
-    "tm_user": "admin1",
+    "tm_user": "admin",
     "tm_path": "/tools/write_crconfig/thecdn",
-    "date": 1465084800,
+    "date": 1465088800,
     "tm_host": "localhost:8889"
   },
   "edgeLocations": {
@@ -1445,7 +1477,7 @@
     }
   },
   "config": {
-    "deliveryservice.snapshots": "true",
+    "modified": "3000-11-09T01:46:39.283473Z",
     "certificate.api.url": "http://${toHostname}/api/1.3/cdns/name/${cdnName}/sslkeys.json",
     "federationmapping.polling.url": "http://${toHostname}/internal/api/1.3/federations.json",
     "federationmapping.polling.interval": "600000",

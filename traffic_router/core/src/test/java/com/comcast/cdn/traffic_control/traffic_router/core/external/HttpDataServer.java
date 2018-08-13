@@ -41,7 +41,7 @@ public class HttpDataServer implements HttpHandler {
 	private boolean receivedCrConfig2Post = false;
 	private boolean receivedCrConfig3Post = false;
 	private boolean receivedCrConfig4Post = false;
-	private boolean receivedV14Post = false;
+	private boolean receivedDsSnapPost = false;
 
 // Useful for producing an access log
 //	static {
@@ -100,12 +100,12 @@ public class HttpDataServer implements HttpHandler {
 						receivedCrConfig4Post = true;
 					}
 
-					if (!receivedV14Post && httpExchange.getRequestURI().getPath().contains("/crconfig-v14")) {
+					if (!receivedDsSnapPost && httpExchange.getRequestURI().getPath().contains("/crconfig-dssnap")) {
 						receivedCrConfig2Post = false;
 						receivedCrConfig3Post = false;
 						receivedCrConfig4Post = false;
 						receivedCertificatesPost = false;
-						receivedV14Post = true;
+						receivedDsSnapPost = true;
 					}
 
 					try {
@@ -161,8 +161,8 @@ public class HttpDataServer implements HttpHandler {
 					path = path.replace("CrConfig", "CrConfig4");
 				}
 
-				if (path.contains("publish") && receivedV14Post ) {
-					path = path.replace("publish", "publish/V14");
+				if (path.contains("publish") && receivedDsSnapPost) {
+					path = path.replace("publish", "publish/DsSnap");
 					System.out.println(path);
 				}
 

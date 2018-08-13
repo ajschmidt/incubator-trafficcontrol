@@ -528,8 +528,6 @@
   },
   "deliveryServices": {
     "https-only-test": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
-      "modified": "1000000000",
       "sslEnabled": "true",
       "protocol": {
         "acceptHttp" : "false",
@@ -573,9 +571,6 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "client-steering-test-1": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
-      "modified": "1000000000",
-      "serversModified": "1000000000",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -625,7 +620,6 @@
       "staticDnsEntries": []
     },
     "client-steering-test-2": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -675,7 +669,6 @@
       "staticDnsEntries": []
     },
     "client-steering-target-1": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -726,7 +719,6 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-2": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -777,9 +769,6 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-3": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
-      "modified": "1000000000",
-      "serversModified": "1000000000",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -830,7 +819,6 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-4": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -881,7 +869,6 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-1": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -944,11 +931,6 @@
       ]
     },
     "steering-target-2": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
-      "modified": "1000000000",
-      "serversModified": "1000000000",
-      "limit": 2,
-      "shuffled": "true",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -996,7 +978,6 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-2": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -1044,7 +1025,6 @@
       "ip6RoutingEnabled": "true"
     },
     "federation-test": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -1100,9 +1080,6 @@
       "ip6RoutingEnabled": "true"
     },
     "steering-target-1": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
-      "modified": "1000000000",
-      "serversModified": "1000000000",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -1160,7 +1137,6 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-4": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -1208,7 +1184,6 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-3": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -1257,7 +1232,6 @@
       "ip6RoutingEnabled": "false"
     },
     "http-and-https-test": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "protocol": {
         "acceptHttp" : "true",
@@ -1301,7 +1275,6 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-to-https-test": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "protocol": {
         "acceptHttp" : "true",
@@ -1345,7 +1318,6 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-only-test": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "protocol": {
         "acceptHttp" : "true",
@@ -1389,7 +1361,6 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "dns-test": {
-      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "bypassDestination": {
         "DNS": {
@@ -1432,7 +1403,6 @@
       "ip6RoutingEnabled": "false"
     },
     "http-addnew-test": {
-      "anyModified": "3000-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "protocol": {
         "acceptHttp": "true",

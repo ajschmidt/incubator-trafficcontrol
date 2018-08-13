@@ -43,7 +43,7 @@ public class SnapshotEventsProcessor {
 
 	final private List<String> deleteCacheEvents = new ArrayList<>();
 	private JsonNode existingConfig = null;
-	private boolean loadall = false;
+	private boolean initialize = false;
 
 	public static SnapshotEventsProcessor diffCrConfigs(final JsonNode newSnapDb,
 	                                                    final JsonNode existingDb) throws
@@ -60,7 +60,7 @@ public class SnapshotEventsProcessor {
 		// Load the entire crConfig from the snapshot if there isn't one saved on the filesystem
 		if (existingDb == null || existingDb.size()< 1) {
 			sepRet.parseDeliveryServices(newSnapDb);
-			sepRet.loadall = true;
+			sepRet.initialize = true;
 			return sepRet;
 		}
 		// Load the entire crConfig from the snapshot if it is not a version supporting
@@ -68,14 +68,14 @@ public class SnapshotEventsProcessor {
 		if (!sepRet.versionSupportsDsSnapshots(newSnapDb)){
 			LOGGER.info("In diffCrConfig 'DS Snapshot' feature turned off.");
 			sepRet.parseDeliveryServices(newSnapDb);
-			sepRet.loadall = true;
+			sepRet.initialize = true;
 			return sepRet;
 		}
 		// Verify that only DS related configurations have changed
 		if (sepRet.hasDiffsForcingReload(newSnapDb, existingDb)){
 			LOGGER.info("hasDiffsForcingReload true");
 			sepRet.parseDeliveryServices(newSnapDb);
-			sepRet.loadall = true;
+			sepRet.initialize = true;
 			return sepRet;
 		}
 		// process only the changes to Delivery Services if none of the above conditions are met
@@ -328,8 +328,8 @@ public class SnapshotEventsProcessor {
 		events.put(dsid, deliveryService);
 	}
 
-	public boolean shouldLoadAll() {
-		return loadall;
+	public boolean shouldReloadConfig() {
+		return initialize;
 	}
 
 	public Map<String, DeliveryService> getCreationEvents() {

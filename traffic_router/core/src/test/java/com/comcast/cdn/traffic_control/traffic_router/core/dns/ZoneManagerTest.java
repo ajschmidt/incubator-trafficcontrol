@@ -103,10 +103,9 @@ public class ZoneManagerTest {
 				continue;
 			}
 
-			final JsonNode domains = ds.getDomains();
+			final String domain = ds.getDomain();
 
-			for (final JsonNode currDomain : domains) {
-				final String domain = currDomain.asText();
+			if (domain != null ) {
 				final Name edgeName = new Name(ds.getRoutingName() + "." + domain + ".");
 
 				for (CacheLocation location : cacheRegister.getCacheLocations()) {
