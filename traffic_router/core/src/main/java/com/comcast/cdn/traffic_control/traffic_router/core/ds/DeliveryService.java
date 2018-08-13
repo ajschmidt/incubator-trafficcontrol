@@ -15,6 +15,23 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.ds;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache.DeliveryServiceReference;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultDetails;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultType;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.StringProtector;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.log4j.Logger;
+
 import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
@@ -27,33 +44,16 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.log4j.Logger;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache.DeliveryServiceReference;
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultType;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultDetails;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.StringProtector;
-
-@SuppressWarnings({"PMD.TooManyFields","PMD.CyclomaticComplexity", "PMD.AvoidDuplicateLiterals"})
+@SuppressWarnings({"PHPMD:ExcessivePublicCount","PMD.TooManyFields","PMD.CyclomaticComplexity","PMD" +
+		".AvoidDuplicateLiterals"})
 public class DeliveryService {
-	protected static final Logger LOGGER = Logger.getLogger(DeliveryService.class);
+	private static final Logger LOGGER = Logger.getLogger(DeliveryService.class);
 	private final String id;
 	@JsonIgnore
 	private final JsonNode ttls;
@@ -76,6 +76,8 @@ public class DeliveryService {
 	private final JsonNode soa;
 	@JsonIgnore
 	private final JsonNode props;
+	@JsonIgnore
+	private final JsonNode matchsets;
 	private boolean isDns;
 	private final String routingName;
 	private final boolean shouldAppendQueryString;
@@ -96,6 +98,7 @@ public class DeliveryService {
 	private final boolean redirectToHttps;
 	private final DeepCachingType deepCache;
 	private String consistentHashRegex;
+
 
 	public enum DeepCachingType {
 		NEVER,
@@ -163,6 +166,8 @@ public class DeliveryService {
 		} finally {
 			this.deepCache = dct;
 		}
+
+		this.matchsets = dsJo.get( "matchsets");
 	}
 
 	public String getId() {
@@ -411,6 +416,9 @@ public class DeliveryService {
 		return deepCache;
 	}
 
+	public JsonNode getMatchsets() {
+		return matchsets;
+	}
 
 	public boolean appendQueryString() {
 		return shouldAppendQueryString;
@@ -483,6 +491,10 @@ public class DeliveryService {
 			return d;
 		}
 		return props.get(key).asInt();
+	}
+
+	public JsonNode getProps() {
+		return props;
 	}
 
 	static StringProtector stringProtector = null;
@@ -647,6 +659,9 @@ public class DeliveryService {
 
 	public boolean isSslReady() {
 		return sslEnabled && hasX509Cert;
+	}
+	public boolean isAcceptHttps() {
+		return acceptHttps;
 	}
 
 	public boolean isAcceptHttp() {

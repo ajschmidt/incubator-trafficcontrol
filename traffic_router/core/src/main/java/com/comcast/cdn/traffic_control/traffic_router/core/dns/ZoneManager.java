@@ -15,6 +15,50 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.dns;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache.DeliveryServiceReference;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Resolver;
+import com.comcast.cdn.traffic_control.traffic_router.core.config.SnapshotEventsProcessor;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.DNSRouteResult;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouter;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheBuilderSpec;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.CacheStats;
+import com.google.common.cache.LoadingCache;
+import com.google.common.cache.RemovalListener;
+import com.google.common.cache.RemovalNotification;
+import com.google.common.util.concurrent.ListenableFuture;
+import com.google.common.util.concurrent.ListenableFutureTask;
+import org.apache.commons.io.IOUtils;
+import org.apache.log4j.Logger;
+import org.xbill.DNS.AAAARecord;
+import org.xbill.DNS.ARecord;
+import org.xbill.DNS.CNAMERecord;
+import org.xbill.DNS.DClass;
+import org.xbill.DNS.NSRecord;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.RRset;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.SOARecord;
+import org.xbill.DNS.SetResponse;
+import org.xbill.DNS.TXTRecord;
+import org.xbill.DNS.TextParseException;
+import org.xbill.DNS.Type;
+import org.xbill.DNS.Zone;
+
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -38,50 +82,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
-import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.commons.io.IOUtils;
-import org.apache.log4j.Logger;
-import org.xbill.DNS.AAAARecord;
-import org.xbill.DNS.ARecord;
-import org.xbill.DNS.CNAMERecord;
-import org.xbill.DNS.DClass;
-import org.xbill.DNS.NSRecord;
-import org.xbill.DNS.Name;
-import org.xbill.DNS.RRset;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.SOARecord;
-import org.xbill.DNS.SetResponse;
-import org.xbill.DNS.TextParseException;
-import org.xbill.DNS.TXTRecord;
-import org.xbill.DNS.Type;
-import org.xbill.DNS.Zone;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache.DeliveryServiceReference;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Resolver;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.DNSRouteResult;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouter;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.cache.CacheBuilderSpec;
-import com.google.common.cache.CacheLoader;
-import com.google.common.cache.CacheStats;
-import com.google.common.cache.LoadingCache;
-import com.google.common.cache.RemovalListener;
-import com.google.common.cache.RemovalNotification;
-import com.google.common.util.concurrent.ListenableFuture;
-import com.google.common.util.concurrent.ListenableFutureTask;
-
 public class ZoneManager extends Resolver {
 	private static final Logger LOGGER = Logger.getLogger(ZoneManager.class);
 
@@ -102,6 +102,7 @@ public class ZoneManager extends Resolver {
 	private static Set<String> dnsRoutingNames;
 	private static final String AAAA = "AAAA";
 
+
 	protected static enum ZoneCacheType {
 		DYNAMIC, STATIC
 	}
@@ -119,6 +120,28 @@ public class ZoneManager extends Resolver {
 		zoneMaintenanceExecutor.shutdownNow();
 		zoneExecutor.shutdownNow();
 		signatureManager.destroy();
+	}
+
+	public void processDsChanges(final SnapshotEventsProcessor snapshotEvents) {
+		final Map<String, DeliveryService> changeEvents = snapshotEvents.getChangeEvents();
+		final Map<String, DeliveryService> deleteEvents = snapshotEvents.getDeleteEvents();
+		final Set<String> dnsRoutingNames = getDnsRoutingNames();
+
+		changeEvents.forEach((dsid, ds) -> {
+			if (!dnsRoutingNames.contains(ds.getRoutingName())) {
+				dnsRoutingNames.add(ds.getRoutingName());
+			}
+		});
+
+		// If a DS name has been changed the old name will show up in the deleteEvents
+		deleteEvents.forEach((dsId, ds) -> {
+			dnsRoutingNames.removeIf(name -> {
+				return ds.getRoutingName().equals(name);
+			});
+		});
+
+		signatureManager.refreshKeyMap();
+		refreshZoneCache(snapshotEvents);
 	}
 
 	protected void rebuildZoneCache() {
@@ -152,6 +175,27 @@ public class ZoneManager extends Resolver {
 	}
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
+	protected void refreshZoneCache(final SnapshotEventsProcessor snep) {
+		synchronized(ZoneManager.class) {
+			final LoadingCache<ZoneKey, Zone> dzc = ZoneManager.dynamicZoneCache;
+			final LoadingCache<ZoneKey, Zone> zc = ZoneManager.zoneCache;
+			final ExecutorService initExecutor = Executors.newFixedThreadPool(2);
+
+			try {
+				LOGGER.info("Refreshing zone data");
+				generateNewZones(getTrafficRouter(), snep, zc, dzc, initExecutor);
+				initExecutor.shutdown();
+				initExecutor.awaitTermination(5, TimeUnit.MINUTES);
+				LOGGER.info("Zone refresh complete");
+			} catch (final InterruptedException ex) {
+				LOGGER.warn("Initialization of zone data exceeded time limit of 5 minutes; continuing", ex);
+			} catch (IOException ex) {
+				LOGGER.fatal("Caught fatal exception while generating zone data!", ex);
+			}
+		}
+	}
+
+	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
 	protected static void initZoneCache(final TrafficRouter tr) {
 		synchronized(ZoneManager.class) {
 			final CacheRegister cacheRegister = tr.getCacheRegister();
@@ -170,7 +214,6 @@ public class ZoneManager extends Resolver {
 			}
 
 			final ExecutorService initExecutor = Executors.newFixedThreadPool(poolSize);
-
 			final ExecutorService ze = Executors.newFixedThreadPool(poolSize);
 			final ScheduledExecutorService me = Executors.newScheduledThreadPool(2); // 2 threads, one for static, one for dynamic, threads to refresh zones
 			final int maintenanceInterval = JsonUtils.optInt(config, "zonemanager.cache.maintenance.interval", 300); // default 5 minutes
@@ -339,7 +382,6 @@ public class ZoneManager extends Resolver {
 		final CacheRegister data = tr.getCacheRegister();
 		final Map<String, List<Record>> zoneMap = new HashMap<String, List<Record>>();
 		final Map<String, DeliveryService> dsMap = new HashMap<String, DeliveryService>();
-		final String tld = getTopLevelDomain().toString(true); // Name.toString(true) - omit the trailing dot
 
 		for (final DeliveryService ds : data.getDeliveryServices().values()) {
 			final JsonNode domains = ds.getDomains();
@@ -348,19 +390,16 @@ public class ZoneManager extends Resolver {
 				continue;
 			}
 
-			for (final JsonNode domainNode : domains) {
-				String domain = domainNode.asText();
-
-				if (domain.endsWith("+")) {
-					domain = domain.replaceAll("\\+\\z", ".") + tld;
-				}
-
-				if (domain.endsWith(tld)) {
-					dsMap.put(domain, ds);
-				}
-			}
+			addNames(ds, dsMap);
 		}
 
+
+		preloadCache(zoneMap, dsMap, data, tr, zc, dzc, initExecutor);
+	}
+
+	private static void preloadCache(final Map<String,List<Record>> zoneMap, final Map<String,DeliveryService> dsMap,
+	                                 final CacheRegister data, final TrafficRouter tr, final LoadingCache<ZoneKey,Zone> zc,
+	                                 final LoadingCache<ZoneKey,Zone> dzc, final ExecutorService initExecutor) throws java.io.IOException {
 		final Map<String, List<Record>> superDomains = populateZoneMap(zoneMap, dsMap, data);
 		final List<Record> superRecords = fillZones(zoneMap, dsMap, tr, zc, dzc, initExecutor);
 		final List<Record> upstreamRecords = fillZones(superDomains, dsMap, tr, superRecords, zc, dzc, initExecutor);
@@ -370,6 +409,51 @@ public class ZoneManager extends Resolver {
 				LOGGER.info("Publish this DS record in the parent zone: " + record);
 			}
 		}
+	}
+
+	private static void generateNewZones(final TrafficRouter tr,
+	                                     final SnapshotEventsProcessor snep, final LoadingCache<ZoneKey, Zone> zc,
+	                                   final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor) throws IOException {
+		final CacheRegister data = tr.getCacheRegister();
+		final Map<String, List<Record>> zoneMap = new HashMap<String, List<Record>>();
+		final Map<String, DeliveryService> dsMap = new HashMap<String, DeliveryService>();
+		final Map<String, DeliveryService> changeEvents = snep.getChangeEvents();
+
+		for (final DeliveryService ds : changeEvents.values()) {
+			final JsonNode domains = ds.getDomains();
+
+			if (domains == null) {
+				continue;
+			}
+
+			addNames(ds, dsMap);
+		}
+
+		preloadCache(zoneMap, dsMap, data, tr, zc, dzc, initExecutor);
+	}
+
+	private static void addNames(final DeliveryService ds, final Map<String, DeliveryService> dsMap) throws IOException {
+
+		final JsonNode domains = ds.getDomains();
+
+		if (domains == null) {
+			return;
+		}
+
+		final String tld = getTopLevelDomain().toString(true); // Name.toString(true) - omit the trailing dot
+
+		for (final JsonNode domainNode : domains) {
+			String domain = domainNode.asText();
+
+			if (domain.endsWith("+")) {
+				domain = domain.replaceAll("\\+\\z", ".") + tld;
+			}
+
+			if (domain.endsWith(tld)) {
+				dsMap.put(domain, ds);
+			}
+		}
+
 	}
 
 	private static List<Record> fillZones(final Map<String, List<Record>> zoneMap, final Map<String, DeliveryService> dsMap, final TrafficRouter tr, final LoadingCache<ZoneKey, Zone> zc, final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor)
@@ -465,12 +549,13 @@ public class ZoneManager extends Resolver {
 								final Set<List<InetRecord>> pset = new HashSet<List<InetRecord>>();
 
 								for (int i = 0; i < primerLimit; i++) {
-									final List<InetRecord> records = tr.inetRecordsFromCaches(ds, caches, request);
+									final List<InetRecord> inetRecords = tr.inetRecordsFromCaches(ds, caches, request);
 
 									if (!pset.contains(records)) {
-										fillDynamicZone(dzc, zone, edgeName, records, signatureManager.isDnssecEnabled());
-										pset.add(records);
-										LOGGER.debug("Primed " + ds.getId() + " @ " + cacheLocation.getId() + "; permutation " + pset.size() + "/" + p);
+										fillDynamicZone(dzc, zone, edgeName, inetRecords, signatureManager.isDnssecEnabled());
+										pset.add(inetRecords);
+										LOGGER.info("Primed " + ds.getId() + " @ " + cacheLocation.getId() + "; " +
+												"permutation " + pset.size() + "/" + p);
 									}
 
 									if (pset.size() == p) {
@@ -612,11 +697,9 @@ public class ZoneManager extends Resolver {
 	private static final Map<String, List<Record>> populateZoneMap(final Map<String, List<Record>> zoneMap,
 			final Map<String, DeliveryService> dsMap, final CacheRegister data) throws IOException {
 		final Map<String, List<Record>> superDomains = new HashMap<String, List<Record>>();
-
 		for (final String domain : dsMap.keySet()) {
 			zoneMap.put(domain, new ArrayList<Record>());
 		}
-
 		for (final Cache c : data.getCacheMap().values()) {
 			for (final DeliveryServiceReference dsr : c.getDeliveryServices()) {
 				final DeliveryService ds = data.getDeliveryService(dsr.getDeliveryServiceId());
@@ -625,49 +708,43 @@ public class ZoneManager extends Resolver {
 					continue;
 				}
 				final String fqdn = dsr.getFqdn();
-				final String[] parts = fqdn.split("\\.", 2);
-				final String host = parts[0];
-				final String domain = parts[1];
-
-				dsMap.put(domain, ds);
-				List<Record> zholder = zoneMap.get(domain);
-
-				if (zholder == null) {
-					zholder = new ArrayList<Record>();
-					zoneMap.put(domain, zholder);
-				}
-
-				final String superdomain = domain.split("\\.", 2)[1];
-
-				if (!superDomains.containsKey(superdomain)) {
-					superDomains.put(superdomain, new ArrayList<Record>());
-				}
-
-				if (ds.isDns() && host.equalsIgnoreCase(ds.getRoutingName())) {
+				final String host = dsr.getHost();
+				final String domain = dsr.getDomain();
+				if (ds == null) {
+					LOGGER.error(dsr.getDeliveryServiceId()+" delivery service not found in CacheRegister. This means" +
+							" the delivery service has been removed or its name changed and the link " +
+							"in cache: " + c.getFqdn() +" has not been corrected. The DNS record will not be created" +
+							".");
 					continue;
 				}
 
-				try {
-					final Name name = newName(fqdn);
-					final JsonNode ttl = ds.getTtls();
-
+				if (dsMap.containsKey(domain)) {
+					final List<Record> zholder = zoneMap.get(domain);
+					final String superdomain = domain.split("\\.", 2)[1];
+					if (!superDomains.containsKey(superdomain)) {
+						superDomains.put(superdomain, new ArrayList<Record>());
+					}
+					if (ds.isDns() && host.equalsIgnoreCase(ds.getRoutingName())) {
+						continue;
+					}
 					try {
-						zholder.add(new ARecord(name, DClass.IN, ZoneUtils.getLong(ttl, "A", 60), c.getIp4()));
-					} catch (IllegalArgumentException e) {
-						LOGGER.warn(e + " : " + c.getIp4());
+						final Name name = newName(fqdn);
+						final JsonNode ttl = ds.getTtls();
+						try {
+							zholder.add(new ARecord(name, DClass.IN, ZoneUtils.getLong(ttl, "A", 60), c.getIp4()));
+						} catch (IllegalArgumentException e) {
+							LOGGER.warn(e + " : " + c.getIp4());
+						}
+						final InetAddress ip6 = c.getIp6();
+						if (ip6 != null && ds != null && ds.isIp6RoutingEnabled()) {
+							zholder.add(new AAAARecord(name, DClass.IN, ZoneUtils.getLong(ttl, AAAA, 60), ip6));
+						}
+					} catch (org.xbill.DNS.TextParseException e) {
+						LOGGER.error("Caught fatal exception while generating zone data for " + fqdn + "!", e);
 					}
-
-					final InetAddress ip6 = c.getIp6();
-
-					if (ip6 != null && ds != null && ds.isIp6RoutingEnabled()) {
-						zholder.add(new AAAARecord(name, DClass.IN, ZoneUtils.getLong(ttl, AAAA, 60), ip6));
-					}
-				} catch (org.xbill.DNS.TextParseException e) {
-					LOGGER.error("Caught fatal exception while generating zone data for " + fqdn  + "!", e);
 				}
 			}
 		}
-
 		return superDomains;
 	}
 

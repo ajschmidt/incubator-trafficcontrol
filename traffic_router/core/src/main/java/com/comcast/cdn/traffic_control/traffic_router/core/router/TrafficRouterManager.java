@@ -15,24 +15,24 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.router;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
+import com.comcast.cdn.traffic_control.traffic_router.core.config.SnapshotEventsProcessor;
+import com.comcast.cdn.traffic_control.traffic_router.core.dns.NameServer;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringRegistry;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpDatabaseService;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationRegistry;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationService;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.log4j.Logger;
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextRefreshedEvent;
+
 import java.io.IOException;
 import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringRegistry;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationRegistry;
-import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.log4j.Logger;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
-import com.comcast.cdn.traffic_control.traffic_router.core.dns.NameServer;
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationService;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationListener;
-import org.springframework.context.event.ContextRefreshedEvent;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpDatabaseService;
 
 public class TrafficRouterManager implements ApplicationListener<ContextRefreshedEvent> {
 	private static final Logger LOGGER = Logger.getLogger(TrafficRouterManager.class);
@@ -163,5 +163,9 @@ public class TrafficRouterManager implements ApplicationListener<ContextRefreshe
 
 	public int getApiPort() {
 		return apiPort;
+	}
+
+	public void updateZones(final SnapshotEventsProcessor changeEvents) {
+			getTrafficRouter().getZoneManager().processDsChanges(changeEvents);
 	}
 }

@@ -15,18 +15,17 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.cache;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryServiceMatcher;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.Request;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.TreeSet;
-
-import com.fasterxml.jackson.databind.JsonNode;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryServiceMatcher;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.Request;
 
 @SuppressWarnings("PMD.LooseCoupling")
 public class CacheRegister implements CacheLocationManager {
@@ -165,4 +164,11 @@ public class CacheRegister implements CacheLocationManager {
 		this.stats = stats;
 	}
 
+	public TreeSet<DeliveryServiceMatcher> getDnsDeliveryServiceMatchers() {
+		return dnsServiceMatchers;
+	}
+
+	public TreeSet<DeliveryServiceMatcher> getHttpDeliveryServiceMatchers() {
+		return httpServiceMatchers;
+	}
 }

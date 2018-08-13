@@ -15,15 +15,7 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.cache;
 
-import java.net.Inet6Address;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import com.comcast.cdn.traffic_control.traffic_router.core.config.ParseException;
 import com.comcast.cdn.traffic_control.traffic_router.core.hash.DefaultHashable;
 import com.comcast.cdn.traffic_control.traffic_router.core.hash.Hashable;
 import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
@@ -33,7 +25,14 @@ import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import org.apache.log4j.Logger;
 
-import com.comcast.cdn.traffic_control.traffic_router.core.config.ParseException;
+import java.net.Inet6Address;
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class Cache implements Comparable<Cache>, Hashable<Cache> {
 	private static final Logger LOGGER = Logger.getLogger(Cache.class);
@@ -43,7 +42,7 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 	private String fqdn;
 	private List<InetRecord> ipAddresses;
 	private int port;
-	private final Map<String, DeliveryServiceReference> deliveryServices = new HashMap<String, DeliveryServiceReference>();
+	private final Map<String, DeliveryServiceReference> deliveryServices = new HashMap<>();
 	private final Geolocation geolocation;
 	private final Hashable hashable = new DefaultHashable();
 	private int httpsPort = 443;
@@ -81,6 +80,10 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 		return deliveryServices.values();
 	}
 
+	public DeliveryServiceReference getDeliveryService(final String dsid) {
+		return deliveryServices.get(dsid);
+	}
+
 	public Geolocation getGeolocation() {
 		return geolocation;
 	}
@@ -103,7 +106,7 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 			ipAddresses = resolver.resolve(this.getFqdn()+".");
 		}
 		if(ipAddresses == null) { return null; }
-		final List<InetRecord> ret = new ArrayList<InetRecord>();
+		final List<InetRecord> ret = new ArrayList<>();
 		for (final InetRecord ir : ipAddresses) {
 			if (ir.isInet6() && !ip6RoutingEnabled) {
 				continue;
@@ -142,6 +145,11 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 		}
 	}
 
+	public void replaceDeliveryServices(final Collection<DeliveryServiceReference> newDeliveryServices){
+		this.deliveryServices.clear();
+		newDeliveryServices.forEach(dsr-> deliveryServices.put(dsr.getDeliveryServiceId(),dsr));
+	}
+
 	public boolean hasDeliveryService(final String deliveryServiceId) {
 		return deliveryServices.containsKey(deliveryServiceId);
 	}
@@ -170,6 +178,9 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 	public static class DeliveryServiceReference {
 		private final String deliveryServiceId;
 		private final String fqdn;
+		private final String host;
+		private final String domain;
+		private List<String> aliases = new ArrayList<>();
 
 		public DeliveryServiceReference(final String deliveryServiceId, final String fqdn) throws ParseException {
 			if (fqdn.split("\\.", 2).length != 2) {
@@ -178,6 +189,18 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 
 			this.deliveryServiceId = deliveryServiceId;
 			this.fqdn = fqdn;
+			final String[] parts = fqdn.split("\\.", 2);
+			host = parts[0];
+			domain = parts[1];
+		}
+
+		public DeliveryServiceReference(final String deliveryServiceId, final String fqdn,
+		                                final List<String> dsNames) throws ParseException {
+			this(deliveryServiceId,fqdn);
+
+			if (dsNames != null) {
+				aliases = dsNames;
+			}
 		}
 
 		public String getDeliveryServiceId() {
@@ -186,6 +209,29 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 
 		public String getFqdn() {
 			return fqdn;
+		}
+
+		/*
+		 * Aliases are only used to create and update the statTracker
+		 */
+		public List<String> getAliases() {
+			return aliases;
+		}
+
+		public void setAliases( final List<String> aliasesLst) {
+			if (aliasesLst == null) {
+				return;
+			}
+
+			aliases = aliasesLst;
+		}
+
+		public String getHost() {
+			return host;
+		}
+
+		public String getDomain() {
+			return domain;
 		}
 	}
 

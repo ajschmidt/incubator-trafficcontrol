@@ -1,0 +1,222 @@
+package com.comcast.cdn.traffic_control.traffic_router.core.config;
+
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.commons.io.IOUtils;
+import org.junit.Before;
+import org.junit.Test;
+import org.powermock.reflect.Whitebox;
+
+import java.io.InputStream;
+import java.util.List;
+import java.util.Map;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.junit.Assert.fail;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
+
+public class SnapshotEventsProcessorTest {
+	private JsonNode newDsSnapJo;
+	private JsonNode baselineJo;
+	private JsonNode updateJo;
+
+	@Before
+	public void setUp() throws Exception {
+		String resourcePath = "unit/ExistingConfig.json";
+		InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+		if (inputStream == null) {
+			fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
+		}
+		String baseDb = IOUtils.toString(inputStream);
+
+		resourcePath = "unit/UpdateDsSnap.json";
+		inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+		if (inputStream == null) {
+			fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
+		}
+		String updateDb = IOUtils.toString(inputStream);
+
+		resourcePath = "unit/NewDsSnap.json";
+		inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+		if (inputStream == null) {
+			fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
+		}
+		String newDsSnapDb = IOUtils.toString(inputStream);
+
+		final ObjectMapper mapper = new ObjectMapper();
+		assertThat(newDsSnapDb, notNullValue());
+		assertThat(baseDb, notNullValue());
+		assertThat(updateDb, notNullValue());
+
+		newDsSnapJo = mapper.readTree(newDsSnapDb);
+		assertThat(newDsSnapJo, notNullValue());
+		updateJo = mapper.readTree(updateDb);
+		assertThat(updateJo, notNullValue());
+		baselineJo = mapper.readTree(baseDb);
+		assertThat(baselineJo, notNullValue());
+	}
+
+	@Test
+	public void mineEventsFromDBDiffsNoChanges() throws Exception {
+		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, baselineJo);
+		assertThat("LoadAll should be true because the snapshot does not have a version attribute.", snapEvents.shouldLoadAll());
+		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
+		try {
+			snapEvents = SnapshotEventsProcessor.diffCrConfigs(null, baselineJo);
+		} catch (JsonUtilsException jue) {
+			assertThat("LoadAll should be true because there is no new snapshot.", jue != null);
+		}
+		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
+	}
+
+	@Test
+	public void mineEventsFromDBNewUpdate() throws Exception {
+		ConfigHandler.setLastSnapshotTimestamp(14650848001l);
+		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(updateJo,
+				baselineJo);
+		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
+		assertThat("18 Delivery services should have been updated but there were only "+snapEvents.getChangeEvents().size(),
+				snapEvents.getChangeEvents().size() == 18);
+	}
+
+	@Test
+	public void mineEventsFromDBDiffsNewDs() throws Exception {
+
+		ConfigHandler.setLastSnapshotTimestamp(14650848001l);
+		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, baselineJo);
+		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
+		assertThat("1 Delivery services should have been added but there was "+snapEvents.getCreationEvents().size(),
+				snapEvents.getCreationEvents().size() == 1);
+	}
+
+	@Test
+	public void parseDsAliases() throws Exception {
+		final JsonNode config = JsonUtils.getJsonNode(baselineJo, ConfigHandler.configKey);
+		final JsonNode contentServers = JsonUtils.getJsonNode(baselineJo, ConfigHandler.contentServersKey);
+		final JsonNode cjo = contentServers.get("edge-cache-000");
+		if (cjo.has(ConfigHandler.deliveryServicesKey)) {
+			final JsonNode dso = cjo.get(ConfigHandler.deliveryServicesKey).get("https-only-test");
+			final SnapshotEventsProcessor sep = mock(SnapshotEventsProcessor.class);
+			when(sep.getExistingConfig()).thenReturn(config);
+			List<String> aliases = Whitebox.invokeMethod(sep, "parseDsAliases", dso);
+			assertThat("Expected to find 1 aliases but found " + aliases.size(), aliases.size() == 1);
+			assertThat("Expected aliases to be 'https-only-test.thecdn.example.com' but found " + aliases.get(0),
+					aliases.get(0).equals("https-only-test.thecdn.example.com"));
+		} else {
+			fail("The edge-cache-000 content server needs to have a delivery service.");
+		}
+	}
+
+	@Test
+	public void getHttpsDeliveryServices_updated() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
+		List<DeliveryService> httpsDs = sep.getSSLEnableDeliveryServices();
+		assertThat("Expected to find 4 https delivery services but found " + httpsDs.size(), httpsDs.size() == 4);
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-only-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("https-only-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-and-https-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-to-https-test"));
+	}
+
+	@Test
+	public void getHttpsDeliveryServices_new() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, updateJo);
+		List<DeliveryService> httpsDs = sep.getSSLEnableDeliveryServices();
+		assertThat("Expected to find 5 https delivery services but found " + httpsDs.size(), httpsDs.size() == 5);
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-only-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("https-only-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-and-https-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-to-https-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-addnew-test"));
+	}
+
+	@Test
+	public void getHttpsDeliveryServices_delete() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, newDsSnapJo);
+		List<DeliveryService> httpsDs = sep.getSSLEnableDeliveryServices();
+		assertThat("Expected to find 4 https delivery services but found " + httpsDs.size(), httpsDs.size() == 4);
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-only-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("https-only-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-and-https-test"));
+		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
+				httpsDs.toString().contains("http-to-https-test"));
+	}
+	@Test
+	public void getChangeEvents() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
+		Map<String, DeliveryService> changes = sep.getChangeEvents();
+		assertThat("Expected to find 18 changed delivery services but found " + changes.size(), changes.size() == 18);
+		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
+				changes.toString().contains("http-only-test"));
+		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
+				changes.toString().contains("https-only-test"));
+		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
+				changes.toString().contains("http-and-https-test"));
+		assertThat("Did not get the expected list of Changed Delivery Services " + changes.toString(),
+				changes.toString().contains("http-to-https-test"));
+	}
+
+	@Test
+	public void getMappingEvents_update() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
+		Map<String, Cache> mappingChanges = sep.getMappingEvents();
+		assertThat("Expected to find 21 mapping changes but found " + mappingChanges.size(),
+				mappingChanges.size() == 21);
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-030"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-041"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-020"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-031"));
+	}
+
+	@Test
+	public void getMappingEvents_new() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, updateJo);
+		Map<String, Cache> mappingChanges = sep.getMappingEvents();
+		assertThat("Expected to find 3 mapping changes but found " + mappingChanges.size(),
+				mappingChanges.size() == 3);
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-000"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-001"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-002"));
+	}
+
+	@Test
+	public void getMappingEvents_delete() throws Exception {
+		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, newDsSnapJo);
+		Map<String, Cache> mappingChanges = sep.getMappingEvents();
+		assertThat("Expected to find 21 mapping changes but found " + mappingChanges.size(),
+				mappingChanges.size() == 21);
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-030"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-041"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-020"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-031"));
+	}
+}

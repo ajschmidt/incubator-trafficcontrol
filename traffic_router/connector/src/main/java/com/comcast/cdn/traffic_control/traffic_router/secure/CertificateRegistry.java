@@ -54,7 +54,7 @@ public class CertificateRegistry {
 	}
 
 	@SuppressWarnings("PMD.UseArrayListInsteadOfVector")
-	private static HandshakeData createDefaultSsl() {
+	public static HandshakeData createDefaultSsl() {
 		try {
 			final CertificateExtensions extensions = new CertificateExtensions();
 			final KeyUsageExtension keyUsageExtension = new KeyUsageExtension();
@@ -137,10 +137,12 @@ public class CertificateRegistry {
 			}
 		}
 		// find CertificateData which has been removed
+		boolean delPreviousDefault = false;
 		for (final String alias : previousData.keySet())
 		{
 			if (!master.containsKey(alias) && sslEndpoint != null)
 			{
+				delPreviousDefault = DEFAULT_SSL_KEY.equals(alias);
 				final String hostname = previousData.get(alias).getHostname();
 				sslEndpoint.removeSslHostConfig(hostname);
 			    log.warn("Removed handshake data with hostname " + hostname);
@@ -159,7 +161,7 @@ public class CertificateRegistry {
 		// Check to see if a Default cert has been provided by Traffic Ops
 		if (!master.containsKey(DEFAULT_SSL_KEY)){
 			// Check to see if a Default cert has been provided/created previously
-			if (handshakeDataMap.containsKey(DEFAULT_SSL_KEY)) {
+			if (!delPreviousDefault && handshakeDataMap.containsKey(DEFAULT_SSL_KEY)) {
 				master.put(DEFAULT_SSL_KEY, handshakeDataMap.get(DEFAULT_SSL_KEY));
 			}else{
 				// create a new default certificate

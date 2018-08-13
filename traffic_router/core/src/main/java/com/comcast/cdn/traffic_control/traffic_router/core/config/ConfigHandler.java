@@ -16,18 +16,22 @@
 package com.comcast.cdn.traffic_control.traffic_router.core.config;
 
 import java.io.IOException;
-import java.net.UnknownHostException;
+import java.net.MalformedURLException;
 import java.net.URL;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.Iterator;
+import java.util.function.Predicate;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
@@ -70,8 +74,15 @@ public class ConfigHandler {
 	private static final Logger LOGGER = Logger.getLogger(ConfigHandler.class);
 
 	private static long lastSnapshotTimestamp = 0;
-	private static Object configSync = new Object();
-	private static String deliveryServicesKey = "deliveryServices";
+	private static final Object configSync = new Object();
+	final static String contentServersKey = "contentServers";
+	final static String versionKey = "version";
+	final static String deliveryServicesKey = "deliveryServices";
+	final static String serverModTsKey = "serversModified";
+	final static String configKey = "config";
+	final static String deliveryServicesModKey = "deliveryServicesModified";
+	final static String DS_URL = "DS_URL";
+	final static String NOT_DS_URL = "NOT_DS_URL";
 
 	private TrafficRouterManager trafficRouterManager;
 	private GeolocationDatabaseUpdater geolocationDatabaseUpdater;
@@ -128,136 +139,212 @@ public class ConfigHandler {
 		return anonymousIpDatabaseUpdater;
 	}
 
-	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity", "PMD.AvoidCatchingThrowable"})
-	public boolean processConfig(final String jsonStr) throws JsonUtilsException, IOException  {
+	@SuppressWarnings({"PMD.AvoidCatchingThrowable"})
+	public boolean processConfig(final String snapJson, final String compJson) throws JsonUtilsException, IOException {
 		isProcessing.set(true);
-		LOGGER.info("Entered processConfig");
-		if (jsonStr == null) {
+		LOGGER.debug("Entered processConfig");
+		if (snapJson == null) {
 			trafficRouterManager.setCacheRegister(null);
 			cancelled.set(false);
 			isProcessing.set(false);
 			publishStatusQueue.clear();
-			LOGGER.info("Exiting processConfig: No json data to process");
+			LOGGER.info("Exiting processConfig: No json data to process because snapshot was NULL.");
 			return false;
 		}
 
 		Date date;
-		synchronized(configSync) {
+		synchronized (configSync) {
 			final ObjectMapper mapper = new ObjectMapper();
-			final JsonNode jo = mapper.readTree(jsonStr);
-			final JsonNode config = JsonUtils.getJsonNode(jo, "config");
+			final JsonNode jo = mapper.readTree(snapJson);
 			final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
-
+			final ObjectMapper compmapper = new ObjectMapper();
+			JsonNode cjo = null;
+			if (compJson != null) {
+				cjo = compmapper.readTree(compJson);
+			}
+			// Check to see if this is a new Snapshot
 			final long sts = getSnapshotTimestamp(stats);
 			date = new Date(sts * 1000L);
-
-			if (sts <= getLastSnapshotTimestamp()) {
+			if (sts < getLastSnapshotTimestamp()) {
 				cancelled.set(false);
 				isProcessing.set(false);
 				publishStatusQueue.clear();
-				LOGGER.info("Exiting processConfig: Incoming TrConfig snapshot timestamp (" + sts + ") is older or equal to the loaded timestamp (" + getLastSnapshotTimestamp() + "); unable to process");
+				LOGGER.info("Exiting processConfig: Incoming CrConfig snapshot timestamp (" + sts + ") is older than " +
+						"the loaded timestamp (" + getLastSnapshotTimestamp() + "); unable to process");
 				return false;
 			}
-
 			try {
-				parseGeolocationConfig(config);
-				parseCoverageZoneNetworkConfig(config);
-				parseDeepCoverageZoneNetworkConfig(config);
-				parseRegionalGeoConfig(jo);
-				parseAnonymousIpConfig(jo);
+				// Search for updates, adds and deletes to delivery services
+				final SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor
+						.diffCrConfigs(jo, cjo);
 
-				final CacheRegister cacheRegister = new CacheRegister();
-				final JsonNode deliveryServicesJson = JsonUtils.getJsonNode(jo, deliveryServicesKey);
-				cacheRegister.setTrafficRouters(JsonUtils.getJsonNode(jo, "contentRouters"));
-				cacheRegister.setConfig(config);
-				cacheRegister.setStats(stats);
-				parseTrafficOpsConfig(config, stats);
-
-				final Map<String, DeliveryService> deliveryServiceMap = parseDeliveryServiceConfig(JsonUtils.getJsonNode(jo, deliveryServicesKey));
-
-				parseCertificatesConfig(config);
-				certificatesPublisher.setDeliveryServicesJson(deliveryServicesJson);
-				final ArrayList<DeliveryService> deliveryServices = new ArrayList<>();
-
-				if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
-					deliveryServices.addAll(deliveryServiceMap.values());
-				}
-
-				if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
-					certificatesPublisher.setDeliveryServices(deliveryServices);
-				}
-
-				certificatesPoller.restart();
-
-				final List<DeliveryService> httpsDeliveryServices = deliveryServices.stream().filter(ds -> !ds.isDns() && ds.isSslEnabled()).collect(Collectors.toList());
-				httpsDeliveryServices.forEach(ds -> LOGGER.info("Checking for certificate for " + ds.getId()));
-
-				if (!httpsDeliveryServices.isEmpty()) {
-					try {
-						publishStatusQueue.put(true);
-					} catch (InterruptedException e) {
-						LOGGER.warn("Failed to notify certificates publisher we're waiting for certificates", e);
+				if (snapshotEventsProcessor.shouldLoadAll()) {
+					if (loadEntireSnapshot(jo, snapshotEventsProcessor.getCreationEvents())) {
+						ConfigHandler.setLastSnapshotTimestamp(sts);
+						return true;
 					}
-
-					while (!cancelled.get() && !publishStatusQueue.isEmpty()) {
-						try {
-							LOGGER.info("Waiting for https certificates to support new config " + String.format("%x", publishStatusQueue.hashCode()));
-							Thread.sleep(1000L);
-						} catch (Throwable t) {
-							LOGGER.warn("Interrupted while waiting for status on publishing ssl certs", t);
-						}
-					}
+				} else if(processChangeEvents(jo, snapshotEventsProcessor)) {
+						ConfigHandler.setLastSnapshotTimestamp(sts);
+						return true;
 				}
-
-				if (cancelled.get()) {
-					cancelled.set(false);
-					isProcessing.set(false);
-					publishStatusQueue.clear();
-					LOGGER.info("Exiting processConfig: processing of config with timestamp " + date + " was cancelled");
-					return false;
-				}
-
-				parseDeliveryServiceMatchSets(deliveryServicesJson, deliveryServiceMap, cacheRegister);
-				parseLocationConfig(JsonUtils.getJsonNode(jo, "edgeLocations"), cacheRegister);
-				parseCacheConfig(JsonUtils.getJsonNode(jo, "contentServers"), cacheRegister);
-				parseMonitorConfig(JsonUtils.getJsonNode(jo, "monitors"));
-
-				federationsWatcher.configure(config);
-				steeringWatcher.configure(config);
-				trafficRouterManager.setCacheRegister(cacheRegister);
-				trafficRouterManager.getNameServer().setEcsEnable(JsonUtils.optBoolean(config, "ecsEnable", false));
-				trafficRouterManager.getTrafficRouter().setRequestHeaders(parseRequestHeaders(config.get("requestHeaders")));
-				trafficRouterManager.getTrafficRouter().configurationChanged();
-
-				/*
-				 * NetworkNode uses lazy loading to associate CacheLocations with NetworkNodes at request time in TrafficRouter.
-				 * Therefore this must be done last, as any thread that holds a reference to the CacheRegister might contain a reference
-				 * to a Cache that no longer exists. In that case, the old CacheLocation and List<Cache> will be set on a
-				 * given CacheLocation within a NetworkNode, leading to an OFFLINE cache to be served, or an ONLINE cache to
-				 * never have traffic routed to it, as the old List<Cache> does not contain the Cache that was moved to ONLINE.
-				 * NetworkNode is a singleton and is managed asynchronously. As long as we swap out the CacheRegister first,
-				 * then clear cache locations, the lazy loading should work as designed. See issue TC-401 for details.
-				 *
-				 * Update for DDC (Dynamic Deep Caching): NetworkNode now has a 2nd singleton (deepInstance) that is managed
-				 * similarly to the non-deep instance. However, instead of clearing a NetworkNode's CacheLocation, only the
-				 * Caches are cleared from the CacheLocation then lazily loaded at request time.
-				 */
-				NetworkNode.getInstance().clearCacheLocations();
-				NetworkNode.getDeepInstance().clearCacheLocations(true);
-				setLastSnapshotTimestamp(sts);
 			} catch (ParseException e) {
-				isProcessing.set(false);
-				cancelled.set(false);
-				publishStatusQueue.clear();
 				LOGGER.error("Exiting processConfig: Failed to process config for snapshot from " + date, e);
 				return false;
+			} finally {
+				isProcessing.set(false);
+				cancelled.set(false);
+				publishStatusQueue.clear();
+			}
+			return false;
+		}
+	}
+
+	@SuppressWarnings({"PMD.AvoidCatchingThrowable"})
+	private boolean processChangeEvents(final JsonNode jo,
+	                                    final SnapshotEventsProcessor snapshotEventsProcessor)
+			throws ParseException, JsonUtilsException, IOException {
+		LOGGER.debug("In processChangeEvents");
+		CacheRegister cacheRegister = null;
+		if (trafficRouterManager.getTrafficRouter() != null) {
+			cacheRegister = trafficRouterManager.getTrafficRouter().getCacheRegister();
+			final int i = cacheRegister.hashCode();
+			LOGGER.debug(i);
+		} else {
+			cacheRegister = new CacheRegister();
+		}
+		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
+		parseRegionalGeoConfig(config, snapshotEventsProcessor);
+		parseAnonymousIpConfig(config, snapshotEventsProcessor);
+		updateCertsPublisher(snapshotEventsProcessor);
+		final List<DeliveryService> httpsDeliveryServices = snapshotEventsProcessor.getSSLEnabledChangeEvents();
+		httpsDeliveryServices.forEach(ds -> LOGGER.info("Checking for certificate for " + ds.getId()));
+		if (!httpsDeliveryServices.isEmpty() && !waitForSslCerts()) {
+			return false;
+		}
+		// updates, creates and removes the DeliveryServices in cacheRegister
+		synchronized (cacheRegister) {
+			parseDeliveryServiceMatchSets(snapshotEventsProcessor, cacheRegister);
+			parseCacheConfig(snapshotEventsProcessor, cacheRegister);
+			trafficRouterManager.updateZones(snapshotEventsProcessor);
+		}
+		trafficRouterManager.getTrafficRouter().configurationChanged();
+		NetworkNode.getInstance().clearCacheLocations();
+		NetworkNode.getDeepInstance().clearCacheLocations(true);
+		return true;
+	}
+
+	private boolean waitForSslCerts() {
+		try {
+			publishStatusQueue.put(true);
+		} catch (InterruptedException e) {
+			LOGGER.warn("Failed to notify certificates publisher we're waiting for certificates", e);
+		}
+		while (!cancelled.get() && !publishStatusQueue.isEmpty()) {
+			try {
+				LOGGER.info("Waiting for https certificates to support new config " + String
+						.format("%x", publishStatusQueue.hashCode()));
+				Thread.sleep(1000L);
+			} catch (Exception t) {
+				LOGGER.warn("Interrupted while waiting for status on publishing ssl certs", t);
 			}
 		}
+		if (cancelled.get()) {
+			LOGGER.info("Exiting waitForSslCerts: processing of config was CANCELED because a newer one is ready.");
+			return false;
+		}
+		return true;
+	}
 
-		LOGGER.info("Exit: processConfig, successfully applied snapshot from " + date);
-		isProcessing.set(false);
-		cancelled.set(false);
-		publishStatusQueue.clear();
+	public CertificatesPoller getCertificatesPoller() {
+		return certificatesPoller;
+	}
+
+	private void updateCertsPublisher(final SnapshotEventsProcessor snapshotEventsProcessor) {
+		Collection<DeliveryService> deliveryServices = null;
+
+		if (snapshotEventsProcessor.getCreationEvents() != null && !snapshotEventsProcessor.getCreationEvents()
+				.isEmpty()) {
+			deliveryServices = snapshotEventsProcessor.getCreationEvents().values();
+			getCertificatesPublisher().getDeliveryServices().addAll(deliveryServices);
+		}
+
+		if (snapshotEventsProcessor.getUpdateEvents() != null && !snapshotEventsProcessor.getUpdateEvents().isEmpty()) {
+			getCertificatesPublisher().getDeliveryServices().replaceAll(ds ->
+					getFirst(snapshotEventsProcessor.getUpdateEvents().values(), uds -> uds.getId().equals(ds.getId()))
+							.orElse(ds));
+		}
+
+		if (snapshotEventsProcessor.getDeleteEvents() != null && !snapshotEventsProcessor.getDeleteEvents().isEmpty()) {
+			getCertificatesPublisher().getDeliveryServices().removeIf(ds ->
+					getFirst(snapshotEventsProcessor.getDeleteEvents().values(),
+							uds -> uds.getId().equals(ds.getId())).isPresent());
+		}
+
+		getCertificatesPoller().restart();
+	}
+
+
+	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity", "PMD.AvoidCatchingThrowable"})
+	private boolean loadEntireSnapshot(final JsonNode jo, final Map<String, DeliveryService> deliveryServiceMap) throws
+			JsonUtilsException, ParseException, IOException {
+		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
+		final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
+		final CacheRegister cacheRegister = new CacheRegister();
+		parseGeolocationConfig(config);
+		parseCoverageZoneNetworkConfig(config);
+		parseDeepCoverageZoneNetworkConfig(config);
+		parseRegionalGeoConfig(jo);
+		parseAnonymousIpConfig(jo);
+		cacheRegister.setTrafficRouters(JsonUtils.getJsonNode(jo, "contentRouters"));
+		cacheRegister.setConfig(config);
+		cacheRegister.setStats(stats);
+		parseTrafficOpsConfig(config, stats);
+		parseCertificatesConfig(config);
+		final ArrayList<DeliveryService> deliveryServices = new ArrayList<>();
+
+		if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
+			deliveryServices.addAll(deliveryServiceMap.values());
+		}
+
+		if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
+			getCertificatesPublisher().setDeliveryServices(deliveryServices);
+		}
+
+		getCertificatesPoller().restart();
+		final List<DeliveryService> httpsDeliveryServices = deliveryServices.stream()
+				.filter(ds -> !ds.isDns() && ds.isSslEnabled()).collect(Collectors.toList());
+		httpsDeliveryServices.forEach(ds -> LOGGER.info("Checking for certificate for " + ds.getId()));
+
+		if (!httpsDeliveryServices.isEmpty() && !waitForSslCerts()) {
+			return false;
+		}
+
+		parseDeliveryServiceMatchSets(deliveryServiceMap, cacheRegister);
+		parseLocationConfig(JsonUtils.getJsonNode(jo, "edgeLocations"), cacheRegister);
+		parseCacheConfig(JsonUtils.getJsonNode(jo, ConfigHandler.contentServersKey), cacheRegister);
+		parseMonitorConfig(JsonUtils.getJsonNode(jo, "monitors"));
+		federationsWatcher.configure(config);
+		steeringWatcher.configure(config);
+		trafficRouterManager.setCacheRegister(cacheRegister);
+		trafficRouterManager.getNameServer().setEcsEnable(JsonUtils.optBoolean(config, "ecsEnable", false));
+		trafficRouterManager.getTrafficRouter().setRequestHeaders(parseRequestHeaders(config.get("requestHeaders")));
+		trafficRouterManager.getTrafficRouter().configurationChanged();
+
+		/*
+		 * NetworkNode uses lazy loading to associate CacheLocations with NetworkNodes at request time in TrafficRouter.
+		 * Therefore this must be done last, as any thread that holds a reference to the CacheRegister might contain a reference
+		 * to a Cache that no longer exists. In that case, the old CacheLocation and List<Cache> will be set on a
+		 * given CacheLocation within a NetworkNode, leading to an OFFLINE cache to be served, or an ONLINE cache to
+		 * never have traffic routed to it, as the old List<Cache> does not contain the Cache that was moved to ONLINE.
+		 * NetworkNode is a singleton and is managed asynchronously. As long as we swap out the CacheRegister first,
+		 * then clear cache locations, the lazy loading should work as designed. See issue TC-401 for details.
+		 *
+		 * Update for DDC (Dynamic Deep Caching): NetworkNode now has a 2nd singleton (deepInstance) that is managed
+		 * similarly to the non-deep instance. However, instead of clearing a NetworkNode's CacheLocation, only the
+		 * Caches are cleared from the CacheLocation then lazily loaded at request time.
+		 */
+		NetworkNode.getInstance().clearCacheLocations();
+		NetworkNode.getDeepInstance().clearCacheLocations(true);
 		return true;
 	}
 
@@ -297,11 +384,9 @@ public class ConfigHandler {
 
 	/**
 	 * Parses the Traffic Ops config
-	 * @param config
-	 *            the {@link TrafficRouterConfiguration} config section
-	 * @param stats
-	 *            the {@link TrafficRouterConfiguration} stats section
 	 *
+	 * @param config the config section
+	 * @param stats  the stats section
 	 * @throws JsonUtilsException
 	 */
 	private void parseTrafficOpsConfig(final JsonNode config, final JsonNode stats) throws JsonUtilsException {
@@ -320,15 +405,99 @@ public class ConfigHandler {
 	/**
 	 * Parses the cache information from the configuration and updates the {@link CacheRegister}.
 	 *
-	 * @param trConfig
-	 *            the {@link TrafficRouterConfiguration}
+	 * @param snap the {@link SnapshotEventsProcessor}
+	 * @param cacheRegister the {@link CacheRegister}
+	 */
+	@SuppressWarnings({"PMD.AvoidDeeplyNestedIfStmts" })
+	private void parseCacheConfig(final SnapshotEventsProcessor snap,
+	                              final CacheRegister cacheRegister) throws
+			ParseException {
+		final Map<String, Cache> existingCacheMap = cacheRegister.getCacheMap();
+		// first Remove caches that have been deleted
+		existingCacheMap.entrySet().removeIf(exEntry-> {
+			if (snap.getDeleteCacheEvents().contains(exEntry.getKey())){
+				LOGGER.info("Removed cache from map: "+exEntry.getKey());
+				return true;
+			}
+			return false;
+		});
+		// remove deleted caches from locations
+		// this works because 'loc.getCaches()' makes a copy
+		final Set<CacheLocation> exLocations = cacheRegister.getCacheLocations();
+		exLocations.forEach(loc->{
+			loc.getCaches().forEach(cacheEntry-> {
+				if (snap.getDeleteCacheEvents().contains(cacheEntry.getId())) {
+					LOGGER.info("Removed cache from location: "+cacheEntry.getId());
+					loc.removeCache(cacheEntry.getId());
+				}
+			});
+		});
+		cacheRegister.setConfiguredLocations(exLocations);
+		// scan remaining caches for ds link changes
+		final Iterator<String> cacheIter = existingCacheMap.keySet().iterator();
+		while (cacheIter.hasNext()) {
+			final String cacheName = cacheIter.next();
+			// If its in the modified list then replace the mappings in existing
+			if (snap.getMappingEvents().keySet().contains(cacheName)) {
+				LOGGER.info("Found mapping change for cache: "+cacheName);
+				final Cache cache = existingCacheMap.get(cacheName);
+				final Cache newCache = snap.getMappingEvents().get(cacheName);
+				final Collection<DeliveryServiceReference> existingDsRefs = cache.getDeliveryServices();
+				for (final DeliveryServiceReference dsr : existingDsRefs ) {
+					final String dsId = dsr.getDeliveryServiceId();
+					DeliveryService theDs = cacheRegister.getDeliveryService(dsId);
+					if (theDs == null) {
+						// This means the delivery service has been deleted, so we can only find it in the deleted list
+						theDs = snap.getDeleteEvents().get(dsId);
+						if (theDs == null) {
+							// this means there is a bug somewhere
+							// allow NullPointerException
+							LOGGER.error("parseCacheConfig: This DeliveryService has been deleted from the Cache " +
+									"Register, but it is not in the list of Delete events: "+dsId);
+							throw new ParseException("parseCacheConfig: This DeliveryService has been deleted from the" +
+									" Cache " +
+									"Register, but it is not in the list of Delete events: "+dsId);
+						}
+						statTracker.removeTracks(theDs, dsr.getAliases());
+					}
+					else
+					{
+						final DeliveryServiceReference ndsr = newCache.getDeliveryService(dsId);
+						addNewStats(ndsr,theDs);
+					}
+				}
+				cache.replaceDeliveryServices(newCache.getDeliveryServices());
+				cache.getDeliveryServices().forEach(dsr-> LOGGER.info("cache = "+cache.getId()+" DSR = "+dsr.getDeliveryServiceId()));
+			}
+			else {
+				LOGGER.info("No changes for cache named: "+cacheName);
+			}
+		}
+	}
+
+	private void addNewStats(final DeliveryServiceReference dsr, final DeliveryService aDs) {
+		List<String> newAliases = null;
+		if (dsr != null) {
+			newAliases = dsr.getAliases();
+		}
+		if (newAliases != null) {
+			final List<StatTracker.Track> newTracks = StatTracker.createTracksForDs(aDs, newAliases);
+			newTracks.forEach(newTrack -> statTracker.saveTrack(newTrack));
+		}
+	}
+
+	/**
+	 * Parses the cache information from the configuration and updates the {@link CacheRegister}.
+	 *
+	 * @param contentServers the JsonNode reference to the cache servers section
+	 * @param cacheRegister
 	 * @throws JsonUtilsException, ParseException
 	 */
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.AvoidDeeplyNestedIfStmts", "PMD.NPathComplexity"})
-	private void parseCacheConfig(final JsonNode contentServers, final CacheRegister cacheRegister) throws JsonUtilsException, ParseException {
-		final Map<String,Cache> map = new HashMap<String,Cache>();
+	private void parseCacheConfig(final JsonNode contentServers, final CacheRegister cacheRegister) throws
+			JsonUtilsException, ParseException {
+		final Map<String, Cache> map = new HashMap<String, Cache>();
 		final Map<String, List<String>> statMap = new HashMap<String, List<String>>();
-
 
 		final Iterator<String> nodeIter = contentServers.fieldNames();
 		while (nodeIter.hasNext()) {
@@ -371,36 +540,33 @@ public class ConfigHandler {
 						List<String> dsNames = statMap.get(ds);
 
 						if (dsNames == null) {
-							dsNames = new ArrayList<String>();
+							dsNames = new ArrayList<>();
 						}
 
-						if (dso.isArray()) {
-							if (dso != null && dso.size() > 0) {
-								int i = 0;
-								for (final JsonNode nameNode : dso) {
-									final String name = nameNode.asText();
-									if (i == 0) {
-										references.add(new DeliveryServiceReference(ds, name));
-									}
-
-									final String tld = JsonUtils.optString(cacheRegister.getConfig(), "domain_name");
-
-									if (name.endsWith(tld)) {
-										final String reName = name.replaceAll("^.*?\\.", "");
-
-										if (!dsNames.contains(reName)) {
-											dsNames.add(reName);
-										}
-									} else {
-										if (!dsNames.contains(name)) {
-											dsNames.add(name);
-										}
-									}
-
-									i++;
+						if (dso.isArray() && dso.size() >0) {
+							int i = 0;
+							for (final JsonNode nameNode : dso) {
+								final String name = nameNode.asText();
+								if (i == 0) {
+									references.add(new DeliveryServiceReference(ds, name));
 								}
-							}
 
+								final String tld = JsonUtils.optString(cacheRegister.getConfig(), "domain_name");
+
+								if (name.endsWith(tld)) {
+									final String reName = name.replaceAll("^.*?\\.", "");
+
+									if (!dsNames.contains(reName)) {
+										dsNames.add(reName);
+									}
+								} else {
+									if (!dsNames.contains(name)) {
+										dsNames.add(name);
+									}
+								}
+
+								i++;
+							}
 						} else {
 							references.add(new DeliveryServiceReference(ds, dso.toString()));
 
@@ -423,61 +589,124 @@ public class ConfigHandler {
 		statTracker.initialize(statMap, cacheRegister);
 	}
 
-	private Map<String, DeliveryService> parseDeliveryServiceConfig(final JsonNode allDeliveryServices) throws JsonUtilsException {
-		final Map<String,DeliveryService> deliveryServiceMap = new HashMap<>();
-
-		final Iterator<String> deliveryServiceIter = allDeliveryServices.fieldNames();
-		while (deliveryServiceIter.hasNext()) {
-			final String deliveryServiceId = deliveryServiceIter.next();
-			final JsonNode deliveryServiceJson = JsonUtils.getJsonNode(allDeliveryServices, deliveryServiceId);
-			final DeliveryService deliveryService = new DeliveryService(deliveryServiceId, deliveryServiceJson);
-			boolean isDns = false;
-
-			final JsonNode matchsets = JsonUtils.getJsonNode(deliveryServiceJson, "matchsets");
-
-			for (final JsonNode matchset : matchsets) {
-				final String protocol = JsonUtils.getString(matchset, "protocol");
-				if ("DNS".equals(protocol)) {
-					isDns = true;
-				}
-			}
-
-			deliveryService.setDns(isDns);
-			deliveryServiceMap.put(deliveryServiceId, deliveryService);
+	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity", "PMD.AvoidCatchingThrowable"})
+	private void parseDeliveryServiceMatchSets(final SnapshotEventsProcessor snap,
+	                                           final CacheRegister cacheRegister) throws
+			JsonUtilsException {
+		final List<JsonUtilsException> jues = new ArrayList<>();
+		if (cacheRegister.getDnsDeliveryServiceMatchers() == null) {
+			cacheRegister.setDnsDeliveryServiceMatchers(new TreeSet<>());
 		}
-
-		return deliveryServiceMap;
+		if (cacheRegister.getHttpDeliveryServiceMatchers() == null) {
+			cacheRegister.setHttpDeliveryServiceMatchers(new TreeSet<>());
+		}
+		if (cacheRegister.getDeliveryServices() == null) {
+			cacheRegister.setDeliveryServiceMap(new HashMap<>());
+		}
+		final TreeSet<DeliveryServiceMatcher> dnsServiceMatchers = cacheRegister.getDnsDeliveryServiceMatchers();
+		final TreeSet<DeliveryServiceMatcher> httpServiceMatchers = cacheRegister.getHttpDeliveryServiceMatchers();
+		final Map<String, DeliveryService> masterDsMap = cacheRegister.getDeliveryServices();
+		final Map<String, DeliveryService> deliveryServiceMap = snap.getChangeEvents();
+		deliveryServiceMap.forEach((deliveryServiceId, deliveryService) -> {
+			try {
+				final JsonNode matchsets = deliveryService.getMatchsets();
+				for (final JsonNode matchset : matchsets) {
+					final String protocol = JsonUtils.getString(matchset, "protocol");
+					final DeliveryServiceMatcher deliveryServiceMatcher = new DeliveryServiceMatcher(deliveryService);
+					if ("HTTP".equals(protocol)) {
+						httpServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
+						httpServiceMatchers.add(deliveryServiceMatcher);
+					} else if ("DNS".equals(protocol)) {
+						dnsServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
+						dnsServiceMatchers.add(deliveryServiceMatcher);
+					}
+					for (final JsonNode matcherJo : JsonUtils.getJsonNode(matchset, "matchlist")) {
+						final Type type = Type.valueOf(JsonUtils.getString(matcherJo, "match-type"));
+						final String target = JsonUtils.optString(matcherJo, "target");
+						deliveryServiceMatcher.addMatch(type, JsonUtils.getString(matcherJo, "regex"), target);
+					}
+				}
+				final String rurl = deliveryService.getGeoRedirectUrl();
+				if (rurl != null) {
+					final int idx = rurl.indexOf("://");
+					if (idx < 0) {
+						//this is a relative url, belongs to this ds
+						deliveryService.setGeoRedirectUrlType(DS_URL);
+					} else {
+						//this is a url with protocol, must check further
+						//first, parse the url, if url invalid it will throw Exception
+						final URL url = new URL(rurl);
+						//make a fake HTTPRequest for the redirect url
+						final HTTPRequest req = new HTTPRequest(url);
+						deliveryService.setGeoRedirectFile(url.getFile());
+						//try select the ds by the redirect fake HTTPRequest
+						final DeliveryService rds = cacheRegister.getDeliveryService(req, true);
+						if (rds == null || rds.getId().equals(deliveryService.getId())) {
+							//the redirect url not belongs to this ds
+							deliveryService.setGeoRedirectUrlType(NOT_DS_URL);
+						} else {
+							deliveryService.setGeoRedirectUrlType(DS_URL);
+						}
+					}
+				}
+				masterDsMap.put(deliveryServiceId, deliveryService);
+			} catch (JsonUtilsException e) {
+				jues.add(e);
+			} catch (MalformedURLException mue) {
+				LOGGER.error("fatal error, failed to init NGB redirect with Exception: " + mue.getMessage());
+			}
+		});
+		if (!jues.isEmpty()) {
+			throw jues.get(0);
+		}
+		// remove delivery services that have been deleted in the snapshot
+		if (!snap.getDeleteEvents().isEmpty()) {
+			snap.getDeleteEvents().forEach((deliveryServiceId, deliveryService) -> {
+				httpServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
+				dnsServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
+				masterDsMap.remove(deliveryServiceId);
+			});
+		}
+		cacheRegister.setDeliveryServiceMap(masterDsMap);
+		cacheRegister.setDnsDeliveryServiceMatchers(dnsServiceMatchers);
+		cacheRegister.setHttpDeliveryServiceMatchers(httpServiceMatchers);
 	}
 
-	private void parseDeliveryServiceMatchSets(final JsonNode allDeliveryServices, final Map<String, DeliveryService> deliveryServiceMap, final CacheRegister cacheRegister) throws JsonUtilsException {
+	private void parseDeliveryServiceMatchSets(final Map<String, DeliveryService> deliveryServiceMap,
+	                                           final CacheRegister cacheRegister) throws
+			JsonUtilsException {
 		final TreeSet<DeliveryServiceMatcher> dnsServiceMatchers = new TreeSet<>();
 		final TreeSet<DeliveryServiceMatcher> httpServiceMatchers = new TreeSet<>();
+		final List<JsonUtilsException> jues = new ArrayList<>();
 
-		final Iterator<String> deliveryServiceIds = allDeliveryServices.fieldNames();
-		while (deliveryServiceIds.hasNext()) {
-			final String deliveryServiceId = deliveryServiceIds.next();
-			final JsonNode deliveryServiceJson = JsonUtils.getJsonNode(allDeliveryServices, deliveryServiceId);
-			final JsonNode matchsets = JsonUtils.getJsonNode(deliveryServiceJson, "matchsets");
-			final DeliveryService deliveryService = deliveryServiceMap.get(deliveryServiceId);
+		deliveryServiceMap.forEach((deliveryServiceId, deliveryService) -> {
+			try {
+				final JsonNode matchsets = deliveryService.getMatchsets();
 
-			for (final JsonNode matchset : matchsets) {
-				final String protocol = JsonUtils.getString(matchset, "protocol");
+				for (final JsonNode matchset : matchsets) {
+					final String protocol = JsonUtils.getString(matchset, "protocol");
 
-				final DeliveryServiceMatcher deliveryServiceMatcher = new DeliveryServiceMatcher(deliveryService);
+					final DeliveryServiceMatcher deliveryServiceMatcher = new DeliveryServiceMatcher(deliveryService);
 
-				if ("HTTP".equals(protocol)) {
-					httpServiceMatchers.add(deliveryServiceMatcher);
-				} else if ("DNS".equals(protocol)) {
-					dnsServiceMatchers.add(deliveryServiceMatcher);
+					if ("HTTP".equals(protocol)) {
+						httpServiceMatchers.add(deliveryServiceMatcher);
+					} else if ("DNS".equals(protocol)) {
+						dnsServiceMatchers.add(deliveryServiceMatcher);
+					}
+
+					for (final JsonNode matcherJo : JsonUtils.getJsonNode(matchset, "matchlist")) {
+						final Type type = Type.valueOf(JsonUtils.getString(matcherJo, "match-type"));
+						final String target = JsonUtils.optString(matcherJo, "target");
+						deliveryServiceMatcher.addMatch(type, JsonUtils.getString(matcherJo, "regex"), target);
+					}
 				}
-
-				for (final JsonNode matcherJo : JsonUtils.getJsonNode(matchset, "matchlist")) {
-					final Type type = Type.valueOf(JsonUtils.getString(matcherJo, "match-type"));
-					final String target = JsonUtils.optString(matcherJo, "target");
-					deliveryServiceMatcher.addMatch(type, JsonUtils.getString(matcherJo, "regex"), target);
-				}
-
+			} catch (JsonUtilsException e) {
+				jues.add(e);
 			}
+		});
+
+		if (!jues.isEmpty()) {
+			throw jues.get(0);
 		}
 
 		cacheRegister.setDeliveryServiceMap(deliveryServiceMap);
@@ -486,20 +715,23 @@ public class ConfigHandler {
 		initGeoFailedRedirect(deliveryServiceMap, cacheRegister);
 	}
 
+
 	private void initGeoFailedRedirect(final Map<String, DeliveryService> dsMap, final CacheRegister cacheRegister) {
 		final Iterator<String> itr = dsMap.keySet().iterator();
 		while (itr.hasNext()) {
 			final DeliveryService ds = dsMap.get(itr.next());
 			//check if it's relative path or not
 			final String rurl = ds.getGeoRedirectUrl();
-			if (rurl == null) { continue; }
+			if (rurl == null) {
+				continue;
+			}
 
 			try {
 				final int idx = rurl.indexOf("://");
 
 				if (idx < 0) {
 					//this is a relative url, belongs to this ds
-					ds.setGeoRedirectUrlType("DS_URL");
+					ds.setGeoRedirectUrlType(DS_URL);
 					continue;
 				}
 				//this is a url with protocol, must check further
@@ -512,13 +744,13 @@ public class ConfigHandler {
 				ds.setGeoRedirectFile(url.getFile());
 				//try select the ds by the redirect fake HTTPRequest
 				final DeliveryService rds = cacheRegister.getDeliveryService(req, true);
-				if (rds == null || rds.getId() != ds.getId()) {
+				if (rds == null || !rds.getId().equals(ds.getId())) {
 					//the redirect url not belongs to this ds
-					ds.setGeoRedirectUrlType("NOT_DS_URL");
+					ds.setGeoRedirectUrlType(NOT_DS_URL);
 					continue;
 				}
 
-				ds.setGeoRedirectUrlType("DS_URL");
+				ds.setGeoRedirectUrlType(DS_URL);
 			} catch (Exception e) {
 				LOGGER.error("fatal error, failed to init NGB redirect with Exception: " + e.getMessage());
 			}
@@ -528,7 +760,7 @@ public class ConfigHandler {
 	/**
 	 * Parses the geolocation database configuration and updates the database if the URL has
 	 * changed.
-	 * 
+	 *
 	 * @param config
 	 *            the {@link TrafficRouterConfiguration}
 	 * @throws JsonUtilsException
@@ -541,8 +773,8 @@ public class ConfigHandler {
 		}
 
 		getGeolocationDatabaseUpdater().setDataBaseURL(
-			JsonUtils.getString(config, pollingUrlKey),
-			JsonUtils.optLong(config, "geolocation.polling.interval")
+				JsonUtils.getString(config, pollingUrlKey),
+				JsonUtils.optLong(config, "geolocation.polling.interval")
 		);
 
 		if (config.has(NEUSTAR_POLLING_URL)) {
@@ -560,7 +792,8 @@ public class ConfigHandler {
 			try {
 				System.setProperty(pollingInterval, JsonUtils.getString(config, pollingInterval));
 			} catch (Exception e) {
-				LOGGER.warn("Failed to set system property " + pollingInterval + " from configuration object: " + e.getMessage());
+				LOGGER.warn("Failed to set system property " + pollingInterval + " from configuration object: " + e
+						.getMessage());
 			}
 		}
 	}
@@ -570,7 +803,7 @@ public class ConfigHandler {
 		final String anonymousPollingInterval = "anonymousip.polling.interval";
 		final String anonymousPolicyConfiguration = "anonymousip.policy.configuration";
 
-		final JsonNode config = JsonUtils.getJsonNode(jo,"config");
+		final JsonNode config = JsonUtils.getJsonNode(jo, "config");
 		final String configUrl = JsonUtils.optString(config, anonymousPolicyConfiguration, null);
 		final String databaseUrl = JsonUtils.optString(config, anonymousPollingUrl, null);
 
@@ -580,9 +813,9 @@ public class ConfigHandler {
 			AnonymousIp.getCurrentConfig().enabled = false;
 			return;
 		}
-		
+
 		if (databaseUrl == null) {
-			LOGGER.info(anonymousPollingUrl + " not configured; stopping service updater and disabling feature");
+			LOGGER.info(anonymousPollingUrl + "  URL not configured; stopping service updater and disabling feature");
 			getAnonymousIpDatabaseUpdater().stopServiceUpdater();
 			AnonymousIp.getCurrentConfig().enabled = false;
 			return;
@@ -599,7 +832,7 @@ public class ConfigHandler {
 					getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
 					getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
 					AnonymousIp.getCurrentConfig().enabled = true;
-					LOGGER.debug("Anonymous Blocking in use, scheduling service updaters and enabling feature");
+					LOGGER.debug(" Anonymous Blocking in use, scheduling service updaters and enabling feature");
 					return;
 				}
 			}
@@ -611,31 +844,121 @@ public class ConfigHandler {
 		AnonymousIp.getCurrentConfig().enabled = false;
 	}
 
+	private void parseAnonymousIpConfig(final JsonNode config, final SnapshotEventsProcessor dsep) {
+		final String anonymousPollingUrl = "anonymousip.polling.url";
+		final String anonymousPollingInterval = "anonymousip.polling.interval";
+		final String anonymousPolicyConfiguration = "anonymousip.policy.configuration";
+		final long interval = JsonUtils.optLong(config, anonymousPollingInterval);
+		final String configUrl = JsonUtils.optString(config, anonymousPolicyConfiguration, null);
+		final String databaseUrl = JsonUtils.optString(config, anonymousPollingUrl, null);
+
+		if (configUrl == null) {
+			LOGGER.info(anonymousPolicyConfiguration + " policy not configured; stopping service updater and disabling feature");
+			getAnonymousIpConfigUpdater().stopServiceUpdater();
+			AnonymousIp.getCurrentConfig().enabled = false;
+			return;
+		}
+
+		if (databaseUrl == null) {
+			LOGGER.info(anonymousPollingUrl + " DB url not configured; stopping service updater and disabling feature");
+			getAnonymousIpDatabaseUpdater().stopServiceUpdater();
+			AnonymousIp.getCurrentConfig().enabled = false;
+			return;
+		}
+
+		Collection<DeliveryService> deliveryServices = dsep.getCreationEvents().values();
+		if (getFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
+			getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
+			getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
+			AnonymousIp.getCurrentConfig().enabled = true;
+			LOGGER.debug("new Anonymous Blocking in use, scheduling service updaters and enabling feature");
+		} else {
+			deliveryServices = dsep.getUpdateEvents().values();
+			if (getFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
+				getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
+				getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
+				AnonymousIp.getCurrentConfig().enabled = true;
+				LOGGER.debug("added Anonymous Blocking in use, scheduling service updaters and enabling feature");
+			} else {
+				deliveryServices = dsep.getNoChangeEvents().values();
+				if (getFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
+					getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
+					getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
+					AnonymousIp.getCurrentConfig().enabled = true;
+					LOGGER.debug("Anonymous Blocking already use, scheduling service updaters and enabling feature");
+				} else {
+					LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
+					getAnonymousIpConfigUpdater().cancelServiceUpdater();
+					getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
+					AnonymousIp.getCurrentConfig().enabled = false;
+				}
+			}
+		}
+	}
+
 	/**
 	 * Parses the ConverageZoneNetwork database configuration and updates the database if the URL has
 	 * changed.
 	 *
-	 * @param trConfig
-	 *            the {@link TrafficRouterConfiguration}
+	 * @param config
 	 * @throws JsonUtilsException
 	 */
 	private void parseCoverageZoneNetworkConfig(final JsonNode config) throws JsonUtilsException {
 		getNetworkUpdater().setDataBaseURL(
 				JsonUtils.getString(config, "coveragezone.polling.url"),
 				JsonUtils.optLong(config, "coveragezone.polling.interval")
-			);
-	}
-
-	private void parseDeepCoverageZoneNetworkConfig(final JsonNode config) throws JsonUtilsException {
-		getDeepNetworkUpdater().setDataBaseURL(
-			JsonUtils.optString(config, "deepcoveragezone.polling.url", null),
-			JsonUtils.optLong(config, "deepcoveragezone.polling.interval")
 		);
 	}
 
-	private void parseRegionalGeoConfig(final JsonNode jo) throws JsonUtilsException {
-		final JsonNode config = JsonUtils.getJsonNode(jo, "config");
+	private void parseDeepCoverageZoneNetworkConfig(final JsonNode config) {
+		getDeepNetworkUpdater().setDataBaseURL(
+				JsonUtils.optString(config, "deepcoveragezone.polling.url", null),
+				JsonUtils.optLong(config, "deepcoveragezone.polling.interval")
+		);
+	}
+
+	private Optional<DeliveryService> getFirst(final Collection<DeliveryService> deliveryServices,
+	                                           final Predicate<DeliveryService> dsTester) {
+		return deliveryServices.stream()
+				.filter(ds -> dsTester.test(ds))
+				.findFirst();
+	}
+
+	private void parseRegionalGeoConfig(final JsonNode config, final SnapshotEventsProcessor dsep) {
 		final String url = JsonUtils.optString(config, "regional_geoblock.polling.url", null);
+		final long interval = JsonUtils.optLong(config, "regional_geoblock.polling.interval");
+		final RegionalGeoUpdater rgu = getRegionalGeoUpdater();
+
+		if (url == null) {
+			LOGGER.info("regional_geoblock.polling.url not configured; stopping service updater");
+			if (rgu != null){
+				rgu.stopServiceUpdater();
+			}
+			return;
+		}
+
+		Collection<DeliveryService> deliveryServices = dsep.getCreationEvents().values();
+		if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
+			rgu.setDataBaseURL(url, interval);
+		} else {
+			deliveryServices = dsep.getUpdateEvents().values();
+			if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
+				rgu.setDataBaseURL(url, interval);
+			} else {
+				deliveryServices = dsep.getNoChangeEvents().values();
+				if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
+					rgu.setDataBaseURL(url, interval);
+				} else {
+					rgu.cancelServiceUpdater();
+				}
+			}
+		}
+	}
+
+	private void parseRegionalGeoConfig(final JsonNode jo) throws JsonUtilsException {
+		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
+		final String url = JsonUtils.optString(config, "regional_geoblock.polling.url", null);
+		final long interval = JsonUtils.optLong(config, "regional_geoblock.polling.interval");
 
 		if (url == null) {
 			LOGGER.info("regional_geoblock.polling.url not configured; stopping service updater");
@@ -645,10 +968,9 @@ public class ConfigHandler {
 
 		if (jo.has(deliveryServicesKey)) {
 			final JsonNode dss = jo.get(deliveryServicesKey);
-			for(final JsonNode ds : dss) {
+			for (final JsonNode ds : dss) {
 				if (ds.has("regionalGeoBlocking") &&
 						JsonUtils.getString(ds, "regionalGeoBlocking").equals("true")) {
-					final long interval = JsonUtils.optLong(config, "regional_geoblock.polling.interval");
 					getRegionalGeoUpdater().setDataBaseURL(url, interval);
 					return;
 				}
@@ -659,16 +981,16 @@ public class ConfigHandler {
 	}
 
 	/**
-	 * Creates a {@link Map} of location IDs to {@link Geolocation}s for every {@link Location}
+	 * Creates a {@link Map} of location IDs to {@link Geolocation}s for every Location
 	 * included in the configuration that has both a latitude and a longitude specified.
 	 *
-	 * @param trConfig
-	 *            the TrafficRouterConfiguration
+	 * @param locationsJo the locations section of the config
 	 * @return the {@link Map}, empty if there are no Locations that have both a latitude and
-	 *         longitude specified
+	 * longitude specified
 	 * @throws JsonUtilsException
 	 */
-	private void parseLocationConfig(final JsonNode locationsJo, final CacheRegister cacheRegister) throws JsonUtilsException {
+	private void parseLocationConfig(final JsonNode locationsJo, final CacheRegister cacheRegister) throws
+			JsonUtilsException {
 		final Set<CacheLocation> locations = new HashSet<CacheLocation>(locationsJo.size());
 
 		final Iterator<String> locIter = locationsJo.fieldNames();
@@ -682,7 +1004,7 @@ public class ConfigHandler {
 				final JsonNode backupConfigJson = JsonUtils.getJsonNode(jo, "backupLocations");
 				backupCacheGroups = new ArrayList<>();
 				if (backupConfigJson.has("list")) {
-					for (final JsonNode cacheGroup : JsonUtils.getJsonNode(backupConfigJson, "list"))  {
+					for (final JsonNode cacheGroup : JsonUtils.getJsonNode(backupConfigJson, "list")) {
 						backupCacheGroups.add(cacheGroup.asText());
 					}
 					useClosestOnBackupFailure = JsonUtils.optBoolean(backupConfigJson, "fallbackToClosest", false);
@@ -703,7 +1025,7 @@ public class ConfigHandler {
 								useClosestOnBackupFailure,
 								enabledLocalizationMethods));
 			} catch (JsonUtilsException e) {
-				LOGGER.warn(e,e);
+				LOGGER.warn(e, e);
 			}
 		}
 		cacheRegister.setConfiguredLocations(locations);
@@ -737,9 +1059,7 @@ public class ConfigHandler {
 	/**
 	 * Creates a {@link Map} of Monitors used by {@link TrafficMonitorWatcher} to pull TrConfigs.
 	 *
-	 * @param trconfig.monitors
-	 *            the monitors section of the TrafficRouter Configuration
-	 * @return void
+	 * @param monitors the monitors section of the TrafficRouter Configuration
 	 * @throws JsonUtilsException, ParseException
 	 */
 	private void parseMonitorConfig(final JsonNode monitors) throws JsonUtilsException, ParseException {
@@ -765,8 +1085,7 @@ public class ConfigHandler {
 	/**
 	 * Returns the time stamp (seconds since the epoch) of the TrConfig snapshot.
 	 *
-	 * @param trconfig.stats
-	 *            the stats section of the TrafficRouter Configuration
+	 * @param stats the stats section of the TrafficRouter Configuration
 	 * @return long
 	 * @throws JsonUtilsException
 	 */
@@ -782,11 +1101,12 @@ public class ConfigHandler {
 		this.statTracker = statTracker;
 	}
 
-	private static long getLastSnapshotTimestamp() {
+	static long getLastSnapshotTimestamp() {
 		return lastSnapshotTimestamp;
 	}
 
-	private static void setLastSnapshotTimestamp(final long lastSnapshotTimestamp) {
+	static void setLastSnapshotTimestamp(final long lastSnapshotTimestamp) {
+		LOGGER.info("Last Snapshot Timestamp set: "+lastSnapshotTimestamp);
 		ConfigHandler.lastSnapshotTimestamp = lastSnapshotTimestamp;
 	}
 
@@ -850,3 +1170,4 @@ public class ConfigHandler {
 		return isProcessing.get();
 	}
 }
+

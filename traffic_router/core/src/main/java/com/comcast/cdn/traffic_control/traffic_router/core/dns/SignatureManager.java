@@ -15,6 +15,21 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.dns;
 
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
+import com.comcast.cdn.traffic_control.traffic_router.core.dns.ZoneManager.ZoneCacheType;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.ProtectedFetcher;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.apache.log4j.Logger;
+import org.xbill.DNS.DSRecord;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.TextParseException;
+
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.security.NoSuchAlgorithmException;
@@ -28,21 +43,6 @@ import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.apache.log4j.Logger;
-import org.xbill.DNS.DSRecord;
-import org.xbill.DNS.Name;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.TextParseException;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
-import com.comcast.cdn.traffic_control.traffic_router.core.dns.ZoneManager.ZoneCacheType;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.ProtectedFetcher;
 
 
 public final class SignatureManager {
@@ -72,7 +72,15 @@ public final class SignatureManager {
 		}
 	}
 
+	public void refreshKeyMap() {
+		initKeyMap(true);
+	}
+
 	private void initKeyMap() {
+		initKeyMap(false);
+	}
+
+	private void initKeyMap(final boolean suppressReload) {
 		synchronized(SignatureManager.class) {
 			final JsonNode config = cacheRegister.getConfig();
 
@@ -83,7 +91,8 @@ public final class SignatureManager {
 				setExpirationMultiplier(JsonUtils.optInt(config, "signaturemanager.expiration.multiplier", 5)); // signature validity is maxTTL * this
 				final ScheduledExecutorService me = Executors.newScheduledThreadPool(1);
 				final int maintenanceInterval = JsonUtils.optInt(config, "keystore.maintenance.interval", 300); // default 300 seconds, do we calculate based on the complimentary settings for key generation in TO?
-				me.scheduleWithFixedDelay(getKeyMaintenanceRunnable(cacheRegister), 0, maintenanceInterval, TimeUnit.SECONDS);
+				me.scheduleWithFixedDelay(getKeyMaintenanceRunnable(cacheRegister, suppressReload), 0, maintenanceInterval,
+						TimeUnit.SECONDS);
 
 				if (keyMaintenanceExecutor != null) {
 					keyMaintenanceExecutor.shutdownNow();
@@ -106,7 +115,7 @@ public final class SignatureManager {
 	}
 
 	@SuppressWarnings("PMD.CyclomaticComplexity")
-	private Runnable getKeyMaintenanceRunnable(final CacheRegister cacheRegister) {
+	private Runnable getKeyMaintenanceRunnable(final CacheRegister cacheRegister, final boolean suppressReload) {
 		return new Runnable() {
 			public void run() {
 				try {
@@ -162,7 +171,10 @@ public final class SignatureManager {
 							LOGGER.debug("Found new keys in incoming keyMap; rebuilding zone caches");
 							trafficRouterManager.trackEvent("newDnsSecKeysFound");
 							keyMap = newKeyMap;
-							getZoneManager().rebuildZoneCache();
+
+							if (!suppressReload) {
+								getZoneManager().rebuildZoneCache();
+							}
 						} // no need to overwrite the keymap if they're the same, so no else leg
 					} else {
 						LOGGER.fatal("Unable to read keyPairData: " + keyPairData);

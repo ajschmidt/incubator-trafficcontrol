@@ -1,4 +1,5 @@
 {
+  "version": 1.4,
   "contentServers": {
     "edge-cache-000": {
       "type": "EDGE",
@@ -13,7 +14,9 @@
       "locationId": "location-0",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"]
       }
     },
@@ -30,7 +33,9 @@
       "locationId": "location-0",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"]
       }
     },
@@ -47,7 +52,9 @@
       "locationId": "location-0",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
         "https-only-test": ["edge-cache-002.https-only-test.thecdn.example.com"]
       }
     },
@@ -64,6 +71,7 @@
       "locationId": "location-1",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1465092800",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-010.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-010.steering-target-2.thecdn.example.com"],
@@ -87,6 +95,7 @@
       "locationId": "location-1",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1465092800",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-011.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-011.steering-target-2.thecdn.example.com"],
@@ -94,7 +103,8 @@
           "edge-cache-011.steering-target-1.thecdn.example.com",
           "edge-cache-011.steering-target-1-b-b.thecdn.example.com"
         ],
-        "http-only-test": ["edge-cache-011.http-only-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-011.http-only-test.thecdn.example.com"],
+        "https-additional": ["edge-cache-011.https-additional.thecdn.example.com"]
       }
     },
     "edge-cache-012": {
@@ -110,6 +120,7 @@
       "locationId": "location-1",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1465092800",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-012.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-012.steering-target-2.thecdn.example.com"],
@@ -118,7 +129,7 @@
           "edge-cache-012.steering-target-1-b-b.thecdn.example.com"
         ],
         "http-only-test": ["edge-cache-012.http-only-test.thecdn.example.com"],
-        "https-additional": ["edge-cache-012.http-only-test.thecdn.example.com"]
+        "https-additional": ["edge-cache-012.https-additional.thecdn.example.com"]
       }
     },
     "edge-cache-020": {
@@ -134,6 +145,7 @@
       "locationId": "location-2",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-2": ["edge-cache-020.steering-test-2.thecdn.example.com"],
         "steering-target-4": ["edge-cache-020.steering-target-4.thecdn.example.com"],
@@ -153,6 +165,7 @@
       "locationId": "location-2",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-2": ["edge-cache-021.steering-test-2.thecdn.example.com"],
         "steering-target-4": ["edge-cache-021.steering-target-4.thecdn.example.com"],
@@ -172,6 +185,7 @@
       "locationId": "location-2",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-2": ["edge-cache-022.steering-test-2.thecdn.example.com"],
         "steering-target-4": ["edge-cache-022.steering-target-4.thecdn.example.com"],
@@ -191,6 +205,7 @@
       "locationId": "location-3",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-030.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-030.steering-target-2.thecdn.example.com"],
@@ -216,6 +231,7 @@
       "locationId": "location-3",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-031.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-031.steering-target-2.thecdn.example.com"],
@@ -241,6 +257,7 @@
       "locationId": "location-3",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-032.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-032.steering-target-2.thecdn.example.com"],
@@ -266,6 +283,7 @@
       "locationId": "location-4",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-040.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-040.steering-target-2.thecdn.example.com"],
@@ -295,6 +313,7 @@
       "locationId": "location-4",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-041.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-041.steering-target-2.thecdn.example.com"],
@@ -324,6 +343,7 @@
       "locationId": "location-4",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-042.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-042.steering-target-2.thecdn.example.com"],
@@ -353,6 +373,7 @@
       "locationId": "location-7",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "http-to-https-test": ["edge-cache-070.http-to-https-test.thecdn.example.com"]
       }
@@ -370,6 +391,7 @@
       "locationId": "location-7",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "http-to-https-test": ["edge-cache-071.http-to-https-test.thecdn.example.com"]
       }
@@ -387,6 +409,7 @@
       "locationId": "location-7",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "http-to-https-test": [ "edge-cache-072.http-to-https-test.thecdn.example.com"]
       }
@@ -404,6 +427,7 @@
       "locationId": "location-8",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "http-and-https-test": ["edge-cache-080.http-and-https-test.thecdn.example.com"]
       }
@@ -421,6 +445,7 @@
       "locationId": "location-8",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "http-and-https-test": ["edge-cache-081.http-and-https-test.thecdn.example.com"]
       }
@@ -438,6 +463,7 @@
       "locationId": "location-8",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "http-and-https-test": [ "edge-cache-082.http-and-https-test.thecdn.example.com"]
       }
@@ -455,6 +481,7 @@
       "locationId": "location-9",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "https-nocert": ["edge-cache-090.https-nocert.thecdn.example.com"]
       }
@@ -472,6 +499,7 @@
       "locationId": "location-9",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "https-nocert": ["edge-cache-091.https-nocert.thecdn.example.com"]
       }
@@ -489,6 +517,7 @@
       "locationId": "location-9",
       "hashCount": 1000,
       "interfaceName": "bond0",
+      "deliveryServicesModified": "1000000000",
       "deliveryServices": {
         "https-nocert": ["edge-cache-092.https-nocert.thecdn.example.com"]
       }
@@ -537,8 +566,54 @@
     }
   },
   "deliveryServices": {
+    "dns-test": {
+      "anyModified": "1465088800",
+      "modified": "1465088800",
+      "sslEnabled": "false",
+      "bypassDestination": {
+        "DNS": {
+          "ttl": "30",
+          "cname": "www.example.com"
+        }
+      },
+      "domains": [
+        "dns-test.thecdn.example.com"
+      ],
+      "coverageZoneOnly": "false",
+      "routingName": "edge",
+      "matchsets": [{
+        "protocol": "DNS",
+        "matchlist": [{
+          "regex": ".*\\.dns-test\\..*",
+          "match-type": "HOST"
+        }]
+      }],
+      "ttls": {
+        "AAAA": "30",
+        "SOA": "7200",
+        "A": "30",
+        "NS": "3600"
+      },
+      "missLocation": {
+        "long": "-87.627778",
+        "lat": "41.881944"
+      },
+      "soa": {
+        "expire": "604800",
+        "minimum": "30",
+        "admin": "admin@thecdn.example.com",
+        "retry": "7200",
+        "refresh": "28800"
+      },
+      "geolocationProvider": "maxmindGeolocationService",
+      "ttl": "30",
+      "maxDnsIpsForLocation": "2",
+      "ip6RoutingEnabled": "false"
+    },
     "https-only-test": {
       "sslEnabled": "true",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "false",
         "acceptHttps" : "true",
@@ -582,6 +657,8 @@
     },
     "steering-test-1": {
       "sslEnabled": "false",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -644,6 +721,8 @@
     },
     "steering-target-2": {
       "sslEnabled": "false",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -691,6 +770,8 @@
     },
     "steering-test-2": {
       "sslEnabled": "false",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -738,6 +819,8 @@
     },
     "federation-test": {
       "sslEnabled": "false",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -793,6 +876,8 @@
     },
     "steering-target-1": {
       "sslEnabled": "false",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -850,6 +935,8 @@
     },
     "steering-target-4": {
       "sslEnabled": "false",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -897,6 +984,8 @@
     },
     "steering-target-3": {
       "sslEnabled": "false",
+      "anyModified": "1465092800",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -910,13 +999,13 @@
         "limit": 1,
         "shuffled": "true"
       },
-      "domains": ["steering-target-3.thecdn.example.com"],
+      "domains": ["steer-poop-three.thecdn.example.com"],
       "coverageZoneOnly": "false",
       "routingName": "tr",
       "matchsets": [{
         "protocol": "HTTP",
         "matchlist": [{
-          "regex": ".*\\.steering-target-3\\..*",
+          "regex": ".*\\.steering-target-(three|3)\\..*",
           "match-type": "HOST"
         }]
       }],
@@ -945,6 +1034,8 @@
     },
     "https-nocert": {
       "sslEnabled": "true",
+      "anyModified": "1465092800",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -988,6 +1079,8 @@
     },
     "https-additional": {
       "sslEnabled": "true",
+      "anyModified": "1465092800",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "false",
         "acceptHttps" : "true",
@@ -1029,9 +1122,10 @@
       },
       "geolocationProvider": "maxmindGeolocationService"
     },
-
     "http-and-https-test": {
       "sslEnabled": "true",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -1075,6 +1169,8 @@
     },
     "http-to-https-test": {
       "sslEnabled": "true",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -1118,6 +1214,8 @@
     },
     "http-only-test": {
       "sslEnabled": "true",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1161,6 +1259,8 @@
     },
     "https-dns-test": {
       "sslEnabled": "true",
+      "anyModified": "1000000000",
+      "modified": "1000000000",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -1208,7 +1308,7 @@
     "CDN_name": "thecdn",
     "tm_user": "admin4",
     "tm_path": "/tools/write_crconfig/thecdn",
-    "date": 1465087800,
+    "date": 1465092800,
     "tm_host": "localhost:8889"
   },
   "edgeLocations": {

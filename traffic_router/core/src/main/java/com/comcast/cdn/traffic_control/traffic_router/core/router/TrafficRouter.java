@@ -15,6 +15,48 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.router;
 
+import com.comcast.cdn.traffic_control.traffic_router.configuration.ConfigurationListener;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation.LocalizationMethod;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
+import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
+import com.comcast.cdn.traffic_control.traffic_router.core.dns.DNSAccessRecord;
+import com.comcast.cdn.traffic_control.traffic_router.core.dns.ZoneManager;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.Steering;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringGeolocationComparator;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringRegistry;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringResult;
+import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringTarget;
+import com.comcast.cdn.traffic_control.traffic_router.core.hash.ConsistentHasher;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIp;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpDatabaseService;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationRegistry;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.MaxmindGeolocationService;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNode;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNodeException;
+import com.comcast.cdn.traffic_control.traffic_router.core.loc.RegionalGeo;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
+import com.comcast.cdn.traffic_control.traffic_router.core.request.Request;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultDetails;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultType;
+import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.RouteType;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.CidrAddress;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
+import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationException;
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationService;
+import com.fasterxml.jackson.databind.JsonNode;
+import org.apache.log4j.Logger;
+import org.springframework.beans.BeansException;
+import org.springframework.context.ApplicationContext;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.Zone;
+
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.MalformedURLException;
@@ -34,52 +76,9 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import com.comcast.cdn.traffic_control.traffic_router.configuration.ConfigurationListener;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringResult;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringTarget;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.Steering;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringRegistry;
-import com.comcast.cdn.traffic_control.traffic_router.core.hash.ConsistentHasher;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.MaxmindGeolocationService;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
-import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.log4j.Logger;
-import org.springframework.beans.BeansException;
-import org.springframework.context.ApplicationContext;
-import org.xbill.DNS.Name;
-import org.xbill.DNS.Zone;
-
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation.LocalizationMethod;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
-import com.comcast.cdn.traffic_control.traffic_router.core.cache.InetRecord;
-import com.comcast.cdn.traffic_control.traffic_router.core.dns.ZoneManager;
-import com.comcast.cdn.traffic_control.traffic_router.core.dns.DNSAccessRecord;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
-import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringGeolocationComparator;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.FederationRegistry;
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationException;
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.GeolocationService;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNode;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.NetworkNodeException;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.RegionalGeo;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.DNSRequest;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
-import com.comcast.cdn.traffic_control.traffic_router.core.request.Request;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultType;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.RouteType;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.TrafficOpsUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.CidrAddress;
-import com.comcast.cdn.traffic_control.traffic_router.core.router.StatTracker.Track.ResultDetails;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIp;
-import com.comcast.cdn.traffic_control.traffic_router.core.loc.AnonymousIpDatabaseService;
-
 public class TrafficRouter {
 	public static final Logger LOGGER = Logger.getLogger(TrafficRouter.class);
-	public static final String XTC_STEERING_OPTION = "x-tc-steering-option";
+	private static final String XTC_STEERING_OPTION = "x-tc-steering-option";
 
 	private final CacheRegister cacheRegister;
 	private final ZoneManager zoneManager;
@@ -90,23 +89,23 @@ public class TrafficRouter {
 	private final boolean consistentDNSRouting;
 
 	private final Random random = new Random(System.nanoTime());
-	private Set<String> requestHeaders = new HashSet<String>();
+	private Set<String> requestHeaders = new HashSet<>();
 	private static final Geolocation GEO_ZERO_ZERO = new Geolocation(0,0);
 	private ApplicationContext applicationContext;
 
 	private final ConsistentHasher consistentHasher = new ConsistentHasher();
 	private SteeringRegistry steeringRegistry;
 
-	private final Map<String, Geolocation> defaultGeolocationsOverride = new HashMap<String, Geolocation>();
+	private final Map<String, Geolocation> defaultGeolocationsOverride = new HashMap<>();
 
 	public TrafficRouter(final CacheRegister cr, 
-			final GeolocationService geolocationService, 
-			final GeolocationService geolocationService6,
-			final AnonymousIpDatabaseService anonymousIpService,
-			final StatTracker statTracker,
-			final TrafficOpsUtils trafficOpsUtils,
-			final FederationRegistry federationRegistry,
-			final TrafficRouterManager trafficRouterManager) throws IOException {
+		final GeolocationService geolocationService,
+		final GeolocationService geolocationService6,
+		final AnonymousIpDatabaseService anonymousIpService,
+		final StatTracker statTracker,
+		final TrafficOpsUtils trafficOpsUtils,
+		final FederationRegistry federationRegistry,
+		final TrafficRouterManager trafficRouterManager) throws IOException {
 		this.cacheRegister = cr;
 		this.geolocationService = geolocationService;
 		this.geolocationService6 = geolocationService6;
@@ -143,7 +142,7 @@ public class TrafficRouter {
 	 * @return collection of supported caches
 	 */
 	public List<Cache> getSupportingCaches(final List<Cache> caches, final DeliveryService ds) {
-		final List<Cache> supportingCaches = new ArrayList<Cache>();
+		final List<Cache> supportingCaches = new ArrayList<>();
 
 		for (final Cache cache : caches) {
 			if (!cache.hasDeliveryService(ds.getId())) {

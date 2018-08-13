@@ -15,6 +15,11 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.cache;
 
+import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
+import org.apache.commons.lang3.builder.EqualsBuilder;
+import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.apache.log4j.Logger;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -22,12 +27,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-import org.apache.log4j.Logger;
-
-import com.comcast.cdn.traffic_control.traffic_router.geolocation.Geolocation;
 
 /**
  * A physical location that has caches.
@@ -117,6 +116,12 @@ public class CacheLocation {
 	public void clearCaches() {
 		synchronized (caches) {
 			caches.clear();
+		}
+	}
+
+	public void removeCache(final String cacheId) {
+		synchronized (caches) {
+			caches.remove(cacheId);
 		}
 	}
 

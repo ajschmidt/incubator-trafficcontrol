@@ -27,7 +27,6 @@ import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpHead;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.conn.ssl.SSLConnectionSocketFactory;
-import org.apache.http.conn.ssl.TrustSelfSignedStrategy;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.http.ssl.SSLContextBuilder;
@@ -64,7 +63,7 @@ import static org.junit.Assert.fail;
 
 @Category(ExternalTest.class)
 @FixMethodOrder(MethodSorters.NAME_ASCENDING)
-public class RouterTest {
+public class RouterTestV14 {
 	private CloseableHttpClient httpClient;
 	private final String cdnDomain = ".thecdn.example.com";
 
@@ -96,6 +95,7 @@ public class RouterTest {
 	private final String routerSecurePort = System.getProperty("routerSecurePort", "8443");
 	private final String testHttpPort = System.getProperty("testHttpServerPort", "8889");
 	private KeyStore trustStore;
+	private static boolean doneBefore = false;
 
 	@Before
 	public void before() throws Exception {
@@ -118,7 +118,7 @@ public class RouterTest {
 			steeringDeliveryServices.add(dsId);
 		}
 
-		resourcePath = "publish/CrConfig.json";
+		resourcePath = "publish/V14/CrConfig.json";
 		inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
 		if (inputStream == null) {
 			fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
@@ -218,12 +218,22 @@ public class RouterTest {
 		InputStream keystoreStream = getClass().getClassLoader().getResourceAsStream("keystore.jks");
 		trustStore.load(keystoreStream, "changeit".toCharArray());
 		TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm()).init(trustStore);
+
 		httpClient = HttpClientBuilder.create()
 			.setSSLSocketFactory(new ClientSslSocketFactory("tr.https-only-test.thecdn.example.com"))
 			.setSSLHostnameVerifier(new TestHostnameVerifier())
 			.disableRedirectHandling()
 			.build();
 
+		// Pretend someone did a cr-config snapshot with a V 1.4 crconfig
+		if (!doneBefore) {
+			doneBefore = true;
+			HttpPost httpPost = new HttpPost("http://localhost:" + testHttpPort + "/crconfig-v14");
+			httpClient.execute(httpPost).close();
+
+			// Default interval for polling cr config is 10 seconds
+			Thread.sleep(25 * 1000);
+		}
 	}
 
 	@After
@@ -236,7 +246,7 @@ public class RouterTest {
 	@Test
 	public void itRedirectsValidHttpRequests() throws IOException, InterruptedException {
 		HttpGet httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + deliveryServiceId + ".bar");
+		httpGet.addHeader("Host", "trvr." + deliveryServiceId + ".bar");
 		CloseableHttpResponse response = null;
 
 		try {
@@ -253,7 +263,7 @@ public class RouterTest {
 	@Test
 	public void itDoesRoutingThroughPathsStartingWithCrs() throws Exception {
 		HttpGet httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/crs/stats?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "foo." + deliveryServiceId + ".bar");
+		httpGet.addHeader("Host", "fooswc." + deliveryServiceId + ".bar");
 		CloseableHttpResponse response = null;
 
 		try {
@@ -267,7 +277,7 @@ public class RouterTest {
 	@Test
 	public void itConsistentlyRedirectsValidRequests() throws IOException, InterruptedException {
 		HttpGet httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + deliveryServiceId + ".bar");
+		httpGet.addHeader("Host", "trcvr." + deliveryServiceId + ".bar");
 		CloseableHttpResponse response = null;
 
 		try {
@@ -430,7 +440,7 @@ public class RouterTest {
 		- Do resolve httpOnly and get 302
 		 */
 		HttpGet httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpOnlyId + ".bar");
+		httpGet.addHeader("Host", "tr1." + httpOnlyId + ".bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
@@ -448,15 +458,12 @@ public class RouterTest {
 			.build();
 
 		httpGet = new HttpGet("https://localhost:" + routerSecurePort + "/x?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpsNoCertsId + ".bar");
+		httpGet.addHeader("Host", "tr1." + httpsNoCertsId + ".bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)){
 			int code = response.getStatusLine().getStatusCode();
-			assertThat("Expected a server error code (503) But got: "+code,
+			assertThat("Expected to get an ssl handshake error! But got: "+code,
 					code, greaterThan(500));
-		}
-		catch (SSLHandshakeException she) {
-			// Expected result of getting the self-signed _default_ certificate
 		}
 
 		// Pretend someone did a cr-config snapshot that would have updated the location to be different
@@ -467,7 +474,7 @@ public class RouterTest {
 		Thread.sleep(15 * 1000);
 
 		httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpOnlyId + ".bar");
+		httpGet.addHeader("Host", "tr2." + httpOnlyId + ".bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
@@ -480,13 +487,16 @@ public class RouterTest {
 		}
 
 		httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpsNoCertsId + ".bar");
+		httpGet.addHeader("Host", "tr2." + httpsNoCertsId + ".bar");
 
 		// verify we do not yet use the new configuration
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(503));
+			Header rdtlH = response.getFirstHeader("rdtl");
+			if (rdtlH!=null) {
+				assertThat(rdtlH.getValue(), is("DS_NOT_FOUND" ));
+			}
 		}
-
 
 		// verify that if we get a new cr-config that turns off https for the problematic delivery service
 		// that it's able to get through while TR is still concurrently trying to get certs
@@ -499,14 +509,15 @@ public class RouterTest {
 		Thread.sleep(30 * 1000);
 
 		httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpOnlyId + ".bar");
+		httpGet.addHeader("Host", "tr3." + httpOnlyId + ".bar");
 
 		// verify we now use the new configuration
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
 			String location = response.getFirstHeader("Location").getValue();
 			assertThat(location, isOneOf(
-				"http://edge-cache-900.http-only-test.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+			"http://edge-cache-900.http-only-test.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					// Default interval for polling cr config is 10 seconds
 				"http://edge-cache-901.http-only-test.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
 				"http://edge-cache-902.http-only-test.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78"
 			));
@@ -514,15 +525,16 @@ public class RouterTest {
 
 		// assert that request gets rejected because SSL is turned off
 		httpGet = new HttpGet("https://localhost:" + routerSecurePort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpsNoCertsId + ".bar");
+		httpGet.addHeader("Host", "tr3." + httpsNoCertsId + ".bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)){
 			int code = response.getStatusLine().getStatusCode();
-			assertThat("Expected an server error code! But got: "+code,
+			assertThat("Expected to get an ssl handshake error! But got: "+code,
 					code, greaterThan(500));
 		}
-		catch (SSLHandshakeException she) {
-			// expected result of getting the self-signed _default_ certificate
+		catch (javax.net.ssl.SSLHandshakeException she)
+		{
+			fail(she.getMessage());
 		}
 
 		// Go back to the cr-config that makes the delivery service https again
@@ -530,7 +542,6 @@ public class RouterTest {
 		httpPost = new HttpPost("http://localhost:" + testHttpPort + "/crconfig-4");
 		httpClient.execute(httpPost).close();
 
-		// Default interval for polling cr config is 10 seconds
 		Thread.sleep(15 * 1000);
 
 		// Update certificates so new ds is valid
@@ -538,24 +549,26 @@ public class RouterTest {
 		httpPost = new HttpPost("http://localhost:"+ testHttpPort + "/certificates");
 		httpClient.execute(httpPost).close();
 
-		httpClient = HttpClientBuilder.create()
-				.setSSLSocketFactory(new ClientSslSocketFactory("https-additional"))
-				.setSSLHostnameVerifier(new TestHostnameVerifier())
-				.disableRedirectHandling()
-				.build();
 		// Our initial test cr config data sets cert poller to 10 seconds
 		Thread.sleep(25000L);
 
 		httpClient = HttpClientBuilder.create()
-				.setSSLSocketFactory(new ClientSslSocketFactory("https-additional.thecdn.example.com"))
+				.setSSLSocketFactory(new ClientSslSocketFactory("https-additional"+cdnDomain))
 				.setSSLHostnameVerifier(new TestHostnameVerifier())
 				.disableRedirectHandling()
 				.build();
 		httpGet = new HttpGet("https://localhost:" + routerSecurePort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + "https-additional" + ".bar");
+		httpGet.addHeader("Host", "tr4.https-additional.bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
+			String location = response.getFirstHeader("Location").getValue();
+			assertThat(location, isOneOf(
+					"https://edge-cache-011.https-additional.thecdn.example" +
+							".com/stuff?fakeClientIpAddress=12.34.56.78",
+					"https://edge-cache-012.https-additional.thecdn.example" +
+							".com/stuff?fakeClientIpAddress=12.34.56.78"
+			));
 	    } catch (SSLHandshakeException e) {
 			fail(e.getMessage());
 	    }
@@ -566,7 +579,7 @@ public class RouterTest {
 				.disableRedirectHandling()
 				.build();
 		httpGet = new HttpGet("https://localhost:" + routerSecurePort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpsNoCertsId + ".bar");
+		httpGet.addHeader("Host", "tr4." + httpsNoCertsId + ".bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
@@ -581,7 +594,7 @@ public class RouterTest {
 		}
 
 		httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr." + httpOnlyId + ".bar");
+		httpGet.addHeader("Host", "tr4." + httpOnlyId + ".bar");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
@@ -591,6 +604,31 @@ public class RouterTest {
 				"http://edge-cache-011.http-only-test.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
 				"http://edge-cache-012.http-only-test.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78"
 			));
+		}
+
+		httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
+		httpGet.addHeader("Host", "tr4.steering-target-three.bar");
+
+		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
+			String location = response.getFirstHeader("Location").getValue();
+			assertThat(location, isOneOf(
+					"http://edge-cache-020.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-021.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-022.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-030.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-031.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-032.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-040.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-041.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78",
+					"http://edge-cache-042.steering-target-3.thecdn.example.com:8090/stuff?fakeClientIpAddress=12.34.56.78"
+			));
+		}
+		httpGet = new HttpGet("http://localhost:" + routerHttpPort + "/stuff?fakeClientIpAddress=12.34.56.78");
+		httpGet.addHeader("Host", "tr4.steering-target-3.bar");
+
+		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
+			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
 		}
 	}
 
@@ -642,7 +680,7 @@ public class RouterTest {
 		private final String host;
 
 		public ClientSslSocketFactory(String host) throws Exception {
-			super(SSLContextBuilder.create().loadTrustMaterial(trustStore, new TrustSelfSignedStrategy()).build(),
+			super(SSLContextBuilder.create().loadTrustMaterial(trustStore, null).build(),
 				new TestHostnameVerifier());
 			this.host = host;
 		}
@@ -651,6 +689,7 @@ public class RouterTest {
 			SNIHostName serverName = new SNIHostName(host);
 			List<SNIServerName> serverNames = new ArrayList<>(1);
 			serverNames.add(serverName);
+
 			SSLParameters params = sslSocket.getSSLParameters();
 			params.setServerNames(serverNames);
 			sslSocket.setSSLParameters(params);
