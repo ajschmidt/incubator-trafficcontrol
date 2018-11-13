@@ -83,6 +83,8 @@ public class SnapshotEventsProcessorTest {
 		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
 		assertThat("18 Delivery services should have been updated but there were only "+snapEvents.getChangeEvents().size(),
 				snapEvents.getChangeEvents().size() == 18);
+		assertThat("21 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
+				snapEvents.getMappingEvents().size() == 21);
 	}
 
 	@Test
@@ -93,6 +95,8 @@ public class SnapshotEventsProcessorTest {
 		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
 		assertThat("1 Delivery services should have been added but there was "+snapEvents.getCreationEvents().size(),
 				snapEvents.getCreationEvents().size() == 1);
+		assertThat("3 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
+				snapEvents.getMappingEvents().size() == 3);
 	}
 
 	@Test

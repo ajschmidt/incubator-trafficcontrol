@@ -19,7 +19,7 @@
         "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
         "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-001": {
       "type": "EDGE",
@@ -39,7 +39,7 @@
         "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
         "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-002": {
       "type": "EDGE",
@@ -59,7 +59,7 @@
         "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
         "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-010": {
       "type": "EDGE",
@@ -82,7 +82,7 @@
           "edge-cache-010.steering-target-1-b-b.thecdn.example.com"
         ]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-011": {
       "type": "EDGE",
@@ -105,7 +105,7 @@
           "edge-cache-011.steering-target-1-b-b.thecdn.example.com"
         ]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-012": {
       "type": "EDGE",
@@ -128,7 +128,7 @@
           "edge-cache-012.steering-target-1-b-b.thecdn.example.com"
         ]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-020": {
       "type": "EDGE",
@@ -152,7 +152,7 @@
         "steering-target-4": ["edge-cache-020.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-020.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-021": {
       "type": "EDGE",
@@ -176,7 +176,7 @@
         "steering-target-4": ["edge-cache-021.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-021.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-022": {
       "type": "EDGE",
@@ -200,7 +200,7 @@
         "steering-target-4": ["edge-cache-022.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-022.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-030": {
       "type": "EDGE",
@@ -230,7 +230,7 @@
         "steering-target-4": ["edge-cache-030.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-030.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-031": {
       "type": "EDGE",
@@ -260,7 +260,7 @@
         "steering-target-4": ["edge-cache-031.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-031.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-032": {
       "type": "EDGE",
@@ -290,7 +290,7 @@
         "steering-target-4": ["edge-cache-032.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-032.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-040": {
       "type": "EDGE",
@@ -324,7 +324,7 @@
         "steering-target-4": ["edge-cache-040.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-040.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-041": {
       "type": "EDGE",
@@ -358,7 +358,7 @@
         "steering-target-4": ["edge-cache-041.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-041.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-042": {
       "type": "EDGE",
@@ -392,7 +392,7 @@
         "steering-target-4": ["edge-cache-042.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-042.steering-target-3.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-070": {
       "type": "EDGE",
@@ -410,7 +410,7 @@
       "deliveryServices": {
         "http-to-https-test": ["edge-cache-070.http-to-https-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-071": {
       "type": "EDGE",
@@ -428,7 +428,7 @@
       "deliveryServices": {
         "http-to-https-test": ["edge-cache-071.http-to-https-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-072": {
       "type": "EDGE",
@@ -446,7 +446,7 @@
       "deliveryServices": {
         "http-to-https-test": [ "edge-cache-072.http-to-https-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-080": {
       "type": "EDGE",
@@ -464,7 +464,7 @@
       "deliveryServices": {
         "http-and-https-test": ["edge-cache-080.http-and-https-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-081": {
       "type": "EDGE",
@@ -482,7 +482,7 @@
       "deliveryServices": {
         "http-and-https-test": ["edge-cache-081.http-and-https-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
     "edge-cache-082": {
       "type": "EDGE",
@@ -500,7 +500,7 @@
       "deliveryServices": {
         "http-and-https-test": [ "edge-cache-082.http-and-https-test.thecdn.example.com"]
       },
-      "deliveryServicesModified": "1465088800"
+      "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     }
   },
   "contentRouters": {
@@ -547,9 +547,9 @@
   },
   "deliveryServices": {
     "https-only-test": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
-      "modified": "1465088800",
+      "modified": "2018-11-09T01:46:39.283473Z",
       "protocol": {
         "acceptHttp" : "false",
         "acceptHttps" : "true",
@@ -592,7 +592,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "client-steering-test-1": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
 	  "modified": "1465088800",
       "sslEnabled": "false",
       "protocol": {
@@ -643,7 +643,7 @@
       "staticDnsEntries": []
     },
     "client-steering-test-2": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "modified": "1465088800",
       "sslEnabled": "false",
       "protocol": {
@@ -694,7 +694,7 @@
       "staticDnsEntries": []
     },
     "client-steering-target-1": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -746,7 +746,7 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-2": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -799,7 +799,7 @@
     },
     "client-steering-target-3": {
       "sslEnabled": "false",
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
@@ -850,7 +850,7 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-4": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -902,7 +902,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-1": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -966,7 +966,7 @@
       ]
     },
     "steering-target-2": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -1015,7 +1015,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-2": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -1064,7 +1064,7 @@
       "ip6RoutingEnabled": "true"
     },
     "federation-test": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -1121,7 +1121,7 @@
       "ip6RoutingEnabled": "true"
     },
     "steering-target-1": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -1180,7 +1180,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-4": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -1229,7 +1229,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-3": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "protocol": {
@@ -1279,7 +1279,7 @@
       "ip6RoutingEnabled": "false"
     },
     "http-and-https-test": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "modified": "1465088800",
       "protocol": {
@@ -1324,7 +1324,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-to-https-test": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "modified": "1465088800",
       "protocol": {
@@ -1369,7 +1369,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-only-test": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "modified": "1465088800",
       "protocol": {
@@ -1414,7 +1414,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "dns-test": {
-      "anyModified": "1465088800",
+      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
       "modified": "1465088800",
       "bypassDestination": {
@@ -1501,7 +1501,7 @@
     }
   },
   "config": {
-    "modified": "9999999999",
+    "modified": "3000-11-09T01:46:39.283473Z",
     "certificate.api.url": "http://${toHostname}/api/1.3/cdns/name/${cdnName}/sslkeys.json",
     "federationmapping.polling.url": "http://${toHostname}/internal/api/1.3/federations.json",
     "federationmapping.polling.interval": "600000",

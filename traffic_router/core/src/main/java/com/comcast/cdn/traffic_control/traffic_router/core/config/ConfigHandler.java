@@ -31,9 +31,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
-import java.util.function.Predicate;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 import com.comcast.cdn.traffic_control.traffic_router.core.ds.SteeringWatcher;
@@ -1103,6 +1103,10 @@ public class ConfigHandler {
 
 	static long getLastSnapshotTimestamp() {
 		return lastSnapshotTimestamp;
+	}
+
+	static java.time.Instant getLastSnapshotInstant() {
+		return java.time.Instant.ofEpochSecond(lastSnapshotTimestamp);
 	}
 
 	static void setLastSnapshotTimestamp(final long lastSnapshotTimestamp) {

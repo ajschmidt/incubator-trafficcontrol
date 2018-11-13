@@ -28,6 +28,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.time.Instant;
 
 public class SnapshotEventsProcessor {
 	private static final Logger LOGGER = Logger.getLogger(SnapshotEventsProcessor.class);
@@ -74,7 +75,7 @@ public class SnapshotEventsProcessor {
 		}
 		// Load the entire crConfig from the snapshot if the load flag is set in the snapshot
 		final JsonNode config = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.configKey);
-		if (JsonUtils.optLong(config, "modified", 0L) > ConfigHandler.getLastSnapshotTimestamp()) {
+		if (Instant.parse(JsonUtils.optString(config, "modified", "1970-01-01T00:00:00Z")).isAfter(ConfigHandler.getLastSnapshotInstant())) {
 			sepRet.parseDeliveryServices(newSnapDb);
 			sepRet.loadall = true;
 			return sepRet;
@@ -100,6 +101,9 @@ public class SnapshotEventsProcessor {
 		while (newServersIter.hasNext()) {
 			final String cid = newServersIter.next();
 			final JsonNode newCacheJo = newServers.get(cid);
+			if (!newCacheJo.has(ConfigHandler.deliveryServicesKey)) {
+				continue;
+			}
 			final Iterator<String> dsrKeys =
 					JsonUtils.getJsonNode(newCacheJo, ConfigHandler.deliveryServicesKey).fieldNames();
 			while (dsrKeys.hasNext()) {
@@ -109,8 +113,8 @@ public class SnapshotEventsProcessor {
 				}
 			}
 			if (!newCacheJo.has(ConfigHandler.deliveryServicesModKey)) { LOGGER.info("deliveryServicesModified is not in the json: "+newCacheJo.toString());}
-			final long dsm = JsonUtils.getLong(newCacheJo, ConfigHandler.deliveryServicesModKey);
-			if (dsm > ConfigHandler.getLastSnapshotTimestamp()) {
+			final Instant dsm = Instant.parse(JsonUtils.getString(newCacheJo, ConfigHandler.deliveryServicesModKey));
+			if (dsm.isAfter(ConfigHandler.getLastSnapshotInstant())) {
 				addMappingEvent(newCacheJo, cid);
 			}
 		}
@@ -268,8 +272,8 @@ public class SnapshotEventsProcessor {
 	}
 
 	private boolean isUpdated(final JsonNode svcNode) throws JsonUtilsException {
-		final long anyModDate = JsonUtils.getLong(svcNode, "anyModified");
-		return (anyModDate > ConfigHandler.getLastSnapshotTimestamp());
+		final Instant anyModified = Instant.parse(JsonUtils.getString(svcNode, "anyModified"));
+		return (anyModified.isAfter(ConfigHandler.getLastSnapshotInstant()));
 	}
 
 	public boolean shouldLoadAll() {
