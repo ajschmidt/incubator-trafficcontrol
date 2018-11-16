@@ -112,14 +112,34 @@ public class SnapshotEventsProcessor {
 					addMappingEvent(newCacheJo, cid);
 				}
 			}
-			if (!newCacheJo.has(ConfigHandler.deliveryServicesModKey)) { LOGGER.info("deliveryServicesModified is not in the json: "+newCacheJo.toString());}
-			final Instant dsm = Instant.parse(JsonUtils.getString(newCacheJo, ConfigHandler.deliveryServicesModKey));
-			if (dsm.isAfter(ConfigHandler.getLastSnapshotInstant())) {
+			if (dssLinkChangeDetected(cid, newCacheJo, existingDb)) {
 				addMappingEvent(newCacheJo, cid);
 			}
 		}
 
 		parseDeleteCacheEvents(JsonUtils.getJsonNode(existingDb, ConfigHandler.contentServersKey), newServers);
+	}
+
+	private boolean dssLinkChangeDetected(final String cid, final JsonNode newCacheJo, final JsonNode existingDb) throws
+			JsonUtilsException {
+		if (existingDb == null)
+		{
+			return true;
+		}
+		final JsonNode existingServers = JsonUtils.getJsonNode(existingDb,ConfigHandler.contentServersKey);
+		if (!existingServers.has(cid)) {
+		    return true;
+		}
+		final JsonNode existingCache = JsonUtils.getJsonNode(existingServers,cid);
+		if (newCacheJo.has(ConfigHandler.deliveryServicesKey) && !existingCache.has(ConfigHandler.deliveryServicesKey)) {
+			return true;
+		}
+		if (newCacheJo.has(ConfigHandler.deliveryServicesKey)) {
+			final JsonNode newDsLinks = JsonUtils.getJsonNode(newCacheJo, ConfigHandler.deliveryServicesKey);
+			return !newDsLinks.equals(JsonUtils.getJsonNode(existingCache, ConfigHandler.deliveryServicesKey));
+		} else {
+			return true;
+		}
 	}
 
 	private void addMappingEvent(final JsonNode newCacheJo, final String cid) throws JsonUtilsException, ParseException {

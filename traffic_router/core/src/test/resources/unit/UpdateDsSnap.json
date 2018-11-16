@@ -37,8 +37,8 @@
       "deliveryServicesModified": "3000-11-09T01:46:39.283473Z",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
+        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"]
       }
     },
     "edge-cache-002": {
@@ -102,8 +102,8 @@
         "steering-test-1": ["edge-cache-011.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-011.steering-target-2.thecdn.example.com"],
         "steering-target-1": [
-          "edge-cache-011.steering-target-1.thecdn.example.com",
-          "edge-cache-011.steering-target-1-b-b.thecdn.example.com"
+          "edge-cache-011.steering-target-1-b-b.thecdn.example.com",
+          "edge-cache-011.steering-target-1.thecdn.example.com"
         ]
       }
     },

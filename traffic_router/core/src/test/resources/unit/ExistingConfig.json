@@ -98,7 +98,8 @@
         "steering-target-1": [
           "edge-cache-011.steering-target-1.thecdn.example.com",
           "edge-cache-011.steering-target-1-b-b.thecdn.example.com"
-        ]
+        ],
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-012": {

@@ -83,8 +83,8 @@ public class SnapshotEventsProcessorTest {
 		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
 		assertThat("18 Delivery services should have been updated but there were only "+snapEvents.getChangeEvents().size(),
 				snapEvents.getChangeEvents().size() == 18);
-		assertThat("21 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
-				snapEvents.getMappingEvents().size() == 21);
+		assertThat("1 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
+				snapEvents.getMappingEvents().size() == 1);
 	}
 
 	@Test
@@ -95,8 +95,8 @@ public class SnapshotEventsProcessorTest {
 		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
 		assertThat("1 Delivery services should have been added but there was "+snapEvents.getCreationEvents().size(),
 				snapEvents.getCreationEvents().size() == 1);
-		assertThat("3 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
-				snapEvents.getMappingEvents().size() == 3);
+		assertThat("4 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
+				snapEvents.getMappingEvents().size() == 4);
 	}
 
 	@Test
@@ -182,45 +182,41 @@ public class SnapshotEventsProcessorTest {
 	public void getMappingEvents_update() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
 		Map<String, Cache> mappingChanges = sep.getMappingEvents();
-		assertThat("Expected to find 21 mapping changes but found " + mappingChanges.size(),
-				mappingChanges.size() == 21);
+		assertThat("Expected to find 1 mapping changes but found " + mappingChanges.size(),
+				mappingChanges.size() == 1);
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-030"));
-		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-041"));
-		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-020"));
-		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-031"));
+				mappingChanges.toString().contains("edge-cache-011"));
 	}
 
 	@Test
 	public void getMappingEvents_new() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, updateJo);
 		Map<String, Cache> mappingChanges = sep.getMappingEvents();
-		assertThat("Expected to find 3 mapping changes but found " + mappingChanges.size(),
-				mappingChanges.size() == 3);
+		assertThat("Expected to find 4 mapping changes but found " + mappingChanges.size(),
+				mappingChanges.size() == 4);
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
 				mappingChanges.toString().contains("edge-cache-000"));
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
 				mappingChanges.toString().contains("edge-cache-001"));
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
 				mappingChanges.toString().contains("edge-cache-002"));
+		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
+				mappingChanges.toString().contains("edge-cache-011"));
 	}
 
 	@Test
 	public void getMappingEvents_delete() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, newDsSnapJo);
 		Map<String, Cache> mappingChanges = sep.getMappingEvents();
-		assertThat("Expected to find 21 mapping changes but found " + mappingChanges.size(),
-				mappingChanges.size() == 21);
+		assertThat("Expected to find 4 mapping changes but found " + mappingChanges.size(),
+				mappingChanges.size() == 4);
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-030"));
+				mappingChanges.toString().contains("edge-cache-000"));
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-041"));
+				mappingChanges.toString().contains("edge-cache-001"));
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-020"));
+				mappingChanges.toString().contains("edge-cache-002"));
 		assertThat("Did not get the expected list of mapping changes " + mappingChanges.toString(),
-				mappingChanges.toString().contains("edge-cache-031"));
+				mappingChanges.toString().contains("edge-cache-011"));
 	}
 }
