@@ -179,7 +179,7 @@ public class ConfigHandler {
 						.diffCrConfigs(jo, cjo);
 
 				if (snapshotEventsProcessor.shouldLoadAll()) {
-					if (loadEntireSnapshot(jo, snapshotEventsProcessor.getCreationEvents())) {
+					if (loadEntireSnapshot(jo, snapshotEventsProcessor)) {
 						ConfigHandler.setLastSnapshotTimestamp(sts);
 						return true;
 					}
@@ -285,16 +285,17 @@ public class ConfigHandler {
 
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity", "PMD.AvoidCatchingThrowable"})
-	private boolean loadEntireSnapshot(final JsonNode jo, final Map<String, DeliveryService> deliveryServiceMap) throws
+	private boolean loadEntireSnapshot(final JsonNode jo, final SnapshotEventsProcessor snapshotEventsProcessor ) throws
 			JsonUtilsException, ParseException, IOException {
+	    final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
 		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
 		final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
 		final CacheRegister cacheRegister = new CacheRegister();
 		parseGeolocationConfig(config);
 		parseCoverageZoneNetworkConfig(config);
 		parseDeepCoverageZoneNetworkConfig(config);
-		parseRegionalGeoConfig(jo);
-		parseAnonymousIpConfig(jo);
+		parseRegionalGeoConfig(jo, snapshotEventsProcessor);
+		parseAnonymousIpConfig(jo, snapshotEventsProcessor);
 		cacheRegister.setTrafficRouters(JsonUtils.getJsonNode(jo, "contentRouters"));
 		cacheRegister.setConfig(config);
 		cacheRegister.setStats(stats);
@@ -798,52 +799,6 @@ public class ConfigHandler {
 		}
 	}
 
-	private void parseAnonymousIpConfig(final JsonNode jo) throws JsonUtilsException {
-		final String anonymousPollingUrl = "anonymousip.polling.url";
-		final String anonymousPollingInterval = "anonymousip.polling.interval";
-		final String anonymousPolicyConfiguration = "anonymousip.policy.configuration";
-
-		final JsonNode config = JsonUtils.getJsonNode(jo, "config");
-		final String configUrl = JsonUtils.optString(config, anonymousPolicyConfiguration, null);
-		final String databaseUrl = JsonUtils.optString(config, anonymousPollingUrl, null);
-
-		if (configUrl == null) {
-			LOGGER.info(anonymousPolicyConfiguration + " not configured; stopping service updater and disabling feature");
-			getAnonymousIpConfigUpdater().stopServiceUpdater();
-			AnonymousIp.getCurrentConfig().enabled = false;
-			return;
-		}
-
-		if (databaseUrl == null) {
-			LOGGER.info(anonymousPollingUrl + "  URL not configured; stopping service updater and disabling feature");
-			getAnonymousIpDatabaseUpdater().stopServiceUpdater();
-			AnonymousIp.getCurrentConfig().enabled = false;
-			return;
-		}
-
-		if (jo.has(deliveryServicesKey)) {
-			final JsonNode dss = JsonUtils.getJsonNode(jo, deliveryServicesKey);
-			final Iterator<String> dsNames = dss.fieldNames();
-			while (dsNames.hasNext()) {
-				final String ds = dsNames.next();
-				final JsonNode dsNode = JsonUtils.getJsonNode(dss, ds);
-				if (JsonUtils.optString(dsNode, "anonymousBlockingEnabled").equals("true")) {
-					final long interval = JsonUtils.optLong(config, anonymousPollingInterval);
-					getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
-					getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
-					AnonymousIp.getCurrentConfig().enabled = true;
-					LOGGER.debug(" Anonymous Blocking in use, scheduling service updaters and enabling feature");
-					return;
-				}
-			}
-		}
-
-		LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
-		getAnonymousIpConfigUpdater().cancelServiceUpdater();
-		getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
-		AnonymousIp.getCurrentConfig().enabled = false;
-	}
-
 	private void parseAnonymousIpConfig(final JsonNode config, final SnapshotEventsProcessor dsep) {
 		final String anonymousPollingUrl = "anonymousip.polling.url";
 		final String anonymousPollingInterval = "anonymousip.polling.interval";
@@ -880,18 +835,11 @@ public class ConfigHandler {
 				AnonymousIp.getCurrentConfig().enabled = true;
 				LOGGER.debug("added Anonymous Blocking in use, scheduling service updaters and enabling feature");
 			} else {
-				deliveryServices = dsep.getNoChangeEvents().values();
-				if (getFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
-					getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
-					getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
-					AnonymousIp.getCurrentConfig().enabled = true;
-					LOGGER.debug("Anonymous Blocking already use, scheduling service updaters and enabling feature");
-				} else {
-					LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
-					getAnonymousIpConfigUpdater().cancelServiceUpdater();
-					getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
-					AnonymousIp.getCurrentConfig().enabled = false;
-				}
+				LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
+				getAnonymousIpConfigUpdater().cancelServiceUpdater();
+				getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
+				AnonymousIp.getCurrentConfig().enabled = false;
+
 			}
 		}
 	}
@@ -945,39 +893,9 @@ public class ConfigHandler {
 			if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
 				rgu.setDataBaseURL(url, interval);
 			} else {
-				deliveryServices = dsep.getNoChangeEvents().values();
-				if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
-					rgu.setDataBaseURL(url, interval);
-				} else {
-					rgu.cancelServiceUpdater();
-				}
+				rgu.cancelServiceUpdater();
 			}
 		}
-	}
-
-	private void parseRegionalGeoConfig(final JsonNode jo) throws JsonUtilsException {
-		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
-		final String url = JsonUtils.optString(config, "regional_geoblock.polling.url", null);
-		final long interval = JsonUtils.optLong(config, "regional_geoblock.polling.interval");
-
-		if (url == null) {
-			LOGGER.info("regional_geoblock.polling.url not configured; stopping service updater");
-			getRegionalGeoUpdater().stopServiceUpdater();
-			return;
-		}
-
-		if (jo.has(deliveryServicesKey)) {
-			final JsonNode dss = jo.get(deliveryServicesKey);
-			for (final JsonNode ds : dss) {
-				if (ds.has("regionalGeoBlocking") &&
-						JsonUtils.getString(ds, "regionalGeoBlocking").equals("true")) {
-					getRegionalGeoUpdater().setDataBaseURL(url, interval);
-					return;
-				}
-			}
-		}
-
-		getRegionalGeoUpdater().cancelServiceUpdater();
 	}
 
 	/**

@@ -15,14 +15,6 @@
 
 package com.comcast.cdn.traffic_control.traffic_router.core.config;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheLocation.LocalizationMethod;
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.CacheRegister;
 import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
@@ -32,12 +24,20 @@ import com.comcast.cdn.traffic_control.traffic_router.core.loc.RegionalGeoUpdate
 import com.comcast.cdn.traffic_control.traffic_router.core.request.HTTPRequest;
 import com.comcast.cdn.traffic_control.traffic_router.core.secure.CertificatesPoller;
 import com.comcast.cdn.traffic_control.traffic_router.core.secure.CertificatesPublisher;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.powermock.api.mockito.PowerMockito;
 import org.powermock.reflect.Whitebox;
+
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.equalTo;
@@ -270,17 +270,15 @@ public class ConfigHandlerTest {
 		modList.put("testDs", ds);
 		when(snapshotEventsProcessor.getCreationEvents()).thenReturn(modList);
 		when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(empty);
-		when(snapshotEventsProcessor.getNoChangeEvents()).thenReturn(empty);
 		Whitebox.invokeMethod(handler, "parseRegionalGeoConfig", config, snapshotEventsProcessor);
 		verify(rgu).setDataBaseURL(eq(url),eq(interval ));
 		when(snapshotEventsProcessor.getCreationEvents()).thenReturn(empty);
 		when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(modList);
 		Whitebox.invokeMethod(handler, "parseRegionalGeoConfig", config, snapshotEventsProcessor);
 		verify(rgu, times(2)).setDataBaseURL(eq(url),eq(interval ));
-		when(snapshotEventsProcessor.getNoChangeEvents()).thenReturn(modList);
 		when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(empty);
 		Whitebox.invokeMethod(handler, "parseRegionalGeoConfig", config, snapshotEventsProcessor);
-		verify(rgu, times(3)).setDataBaseURL(eq(url),eq(interval ));
+		verify(rgu, times(2)).setDataBaseURL(eq(url),eq(interval ));
 	};
 
     @Test
@@ -344,7 +342,6 @@ public class ConfigHandlerTest {
         negativeList.put("negTestDs",nds);
         when(snapshotEventsProcessor.getCreationEvents()).thenReturn(empty);
 	    when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(empty);
-	    when(snapshotEventsProcessor.getNoChangeEvents()).thenReturn(empty);
         Whitebox.invokeMethod(handler, "parseRegionalGeoConfig", config, snapshotEventsProcessor);
         verify(rgu).cancelServiceUpdater();
 	    when(snapshotEventsProcessor.getCreationEvents()).thenReturn(negativeList);
@@ -381,7 +378,6 @@ public class ConfigHandlerTest {
 	    createList.put("testDs", ds);
 	    when(snapshotEventsProcessor.getCreationEvents()).thenReturn(createList);
 	    when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(empty);
-	    when(snapshotEventsProcessor.getNoChangeEvents()).thenReturn(empty);
 	    AnonymousIpConfigUpdater anonymousIpConfigUpdater = mock(AnonymousIpConfigUpdater.class);
 	    when(handler.getAnonymousIpConfigUpdater()).thenReturn(anonymousIpConfigUpdater);
 	    AnonymousIpDatabaseUpdater anonymousIpDatabaseUpdater = mock(AnonymousIpDatabaseUpdater.class);
@@ -405,7 +401,6 @@ public class ConfigHandlerTest {
 	    createList.put("testDs", ds);
 	    when(snapshotEventsProcessor.getCreationEvents()).thenReturn(createList);
 	    when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(empty);
-	    when(snapshotEventsProcessor.getNoChangeEvents()).thenReturn(empty);
         Whitebox.invokeMethod(handler, "updateCertsPublisher", snapshotEventsProcessor);
 	    verify(certificatesPoller).restart();
     };

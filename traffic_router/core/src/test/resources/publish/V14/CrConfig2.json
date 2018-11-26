@@ -591,7 +591,9 @@
       "coverageZoneOnly": "false",
       "routingName": "tr",
       "regionalGeoBlocking": "false",
-      "matchsets": [{
+      "matchsets": [
+        null,
+        {
         "protocol": "HTTP",
         "matchlist": [{
           "regex": ".*\\.https-only-test\\..*",
@@ -1152,6 +1154,11 @@
         "protocol": "HTTP",
         "matchlist": [{
           "regex": ".*\\.http-only-test\\..*",
+          "match-type": "HOST" }]},
+        {
+        "protocol": "HTTP-LIVE",
+        "matchlist": [{
+          "regex": ".*\\.http-only-test-two\\..*",
           "match-type": "HOST"
         }]
       }],

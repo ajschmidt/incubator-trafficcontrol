@@ -1316,7 +1316,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-only-test": {
-      "sslEnabled": "true",
+      "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",

@@ -35,7 +35,6 @@ public class SnapshotEventsProcessor {
 	final private Map<String, DeliveryService> creationEvents = new HashMap<>();
 	final private Map<String, DeliveryService> updateEvents = new HashMap<>();
 	final private Map<String, DeliveryService> deleteEvents = new HashMap<>();
-	final private Map<String, DeliveryService> noChangeEvents = new HashMap<>();
 	final private Map<String, Cache> mappingEvents = new HashMap<>();
 	final private List<String> serverModEvents = new ArrayList<>();
 
@@ -68,7 +67,7 @@ public class SnapshotEventsProcessor {
 		// Load the entire crConfig from the snapshot if it is not version a version supporting
 		// DS Snapshots
 		if (!sepRet.versionSupportsDsSnapshots(newSnapDb)){
-			LOGGER.info("In diffCrConfig got old version.");
+			LOGGER.info("In diffCrConfig got old version of crConfig.");
 			sepRet.parseDeliveryServices(newSnapDb);
 			sepRet.loadall = true;
 			return sepRet;
@@ -163,7 +162,7 @@ public class SnapshotEventsProcessor {
 		});
 	}
 
-	public List<DeliveryServiceReference> parseDsRefs(final JsonNode cjo) throws JsonUtilsException, ParseException{
+	private List<DeliveryServiceReference> parseDsRefs(final JsonNode cjo) throws JsonUtilsException, ParseException{
 		final List<DeliveryServiceReference> dsRefs = new ArrayList<>();
 		if (cjo.has(ConfigHandler.deliveryServicesKey)) {
 			final JsonNode dsRefsJo = JsonUtils.getJsonNode(cjo, ConfigHandler.deliveryServicesKey);
@@ -222,36 +221,30 @@ public class SnapshotEventsProcessor {
 		final JsonNode newDeliveryServices = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.deliveryServicesKey);
 		final List<String> existingIds = new ArrayList<>();
 
+		// find delivery services that have been changed or deleted in the new snapshot
 		if (existingDb != null) {
 			compDeliveryServices = JsonUtils.getJsonNode(existingDb, ConfigHandler.deliveryServicesKey);
 
-			final Iterator<String> deliveryServiceIter = compDeliveryServices.fieldNames();
-			while (deliveryServiceIter.hasNext()) {
-				final String deliveryServiceId = deliveryServiceIter.next();
-				final JsonNode deliveryServiceJson = JsonUtils.getJsonNode(compDeliveryServices, deliveryServiceId);
+			final Iterator<String> compIter = compDeliveryServices.fieldNames();
+			while (compIter.hasNext()) {
+				final String deliveryServiceId = compIter.next();
+				final JsonNode compDeliveryService = JsonUtils.getJsonNode(compDeliveryServices, deliveryServiceId);
 				existingIds.add(deliveryServiceId);
 
 				final JsonNode newService = newDeliveryServices.get(deliveryServiceId);
 
 				if (newService != null) {
-					LOGGER.info(("found service = "+deliveryServiceId));
-					if (isUpdated(newService)) {
+					if (isUpdated(newService, compDeliveryService)) {
 						addEvent(updateEvents, newService, deliveryServiceId);
-
-						if (fqdnUpdated(newService,deliveryServiceJson)) {
-							LOGGER.info("fqdnUpdated for delivery service: "+deliveryServiceId);
-							serverModEvents.add(deliveryServiceId);
-						}
-					} else {
-						addEvent(noChangeEvents, newService, deliveryServiceId);
 					}
 				} else {
 					LOGGER.info(("deleted Service = "+deliveryServiceId));
-					addEvent(deleteEvents, deliveryServiceJson, deliveryServiceId);
+					addEvent(deleteEvents, compDeliveryService, deliveryServiceId);
 				}
 			}
 		}
 
+		// find delivery services that have been added in the latest snapshot
 		final Iterator<String> newServiceIter = newDeliveryServices.fieldNames();
 		while (newServiceIter.hasNext()) {
 			final String deliveryServiceId = newServiceIter.next();
@@ -262,38 +255,26 @@ public class SnapshotEventsProcessor {
 		}
 	}
 
-	private boolean fqdnUpdated(final JsonNode newService, final JsonNode existingService) throws JsonUtilsException {
-		final JsonNode newDomains = JsonUtils.getJsonNode(newService, "domains");
-		if (!newDomains.equals(JsonUtils.getJsonNode(existingService, "domains"))) {
-			return true;
-		}
-		final JsonNode newMatchSets = JsonUtils.getJsonNode(newService,"matchsets");
-		if (!newMatchSets.equals(JsonUtils.getJsonNode(existingService, "matchsets"))) {
-			return true;
-		}
-		return false;
+	private boolean isUpdated(final JsonNode newService, final JsonNode deliveryServiceJson) {
+		return !(newService.equals(deliveryServiceJson));
 	}
 
 	private void addEvent(final Map<String, DeliveryService> events, final JsonNode ds, final String dsid) throws
 			JsonUtilsException {
 		final DeliveryService deliveryService = new DeliveryService(dsid, ds);
 		boolean isDns = false;
-
 		final JsonNode matchsets = JsonUtils.getJsonNode(ds, "matchsets");
 
 		for (final JsonNode matchset : matchsets) {
-			final String protocol = JsonUtils.getString(matchset, "protocol");
-			if ("DNS".equals(protocol)) {
-				isDns = true;
+			if (matchset != null && matchset.has("protocol")) {
+				final String protocol = JsonUtils.getString(matchset, "protocol");
+				if ("DNS".equals(protocol)) {
+					isDns = true;
+				}
 			}
 		}
 		deliveryService.setDns(isDns);
 		events.put(dsid, deliveryService);
-	}
-
-	private boolean isUpdated(final JsonNode svcNode) throws JsonUtilsException {
-		final Instant anyModified = Instant.parse(JsonUtils.getString(svcNode, "anyModified"));
-		return (anyModified.isAfter(ConfigHandler.getLastSnapshotInstant()));
 	}
 
 	public boolean shouldLoadAll() {
@@ -312,29 +293,9 @@ public class SnapshotEventsProcessor {
 		return updateEvents;
 	}
 
-	public Map<String, DeliveryService> getNoChangeEvents() {
-		return noChangeEvents;
-	}
-
-	public List<DeliveryService> getSSLEnableDeliveryServices() {
-		final List<DeliveryService> httpsDeliveryServices = new ArrayList<>();
-		httpsDeliveryServices.addAll(getSSLEnabledChangeEvents());
-		getNoChangeEvents().forEach((dsid, ds) -> {
-			if (!ds.isDns() && ds.isSslEnabled()) {
-				httpsDeliveryServices.add(ds);
-			}
-		});
-		return httpsDeliveryServices;
-	}
-
 	public List<DeliveryService> getSSLEnabledChangeEvents() {
 		final List<DeliveryService> httpsDeliveryServices = new ArrayList<>();
-		getUpdateEvents().forEach((dsid, ds) -> {
-			if (!ds.isDns() && ds.isSslEnabled()) {
-				httpsDeliveryServices.add(ds);
-			}
-		});
-		getCreationEvents().forEach((dsid, ds) -> {
+		getChangeEvents().forEach((dsid, ds) -> {
 			if (!ds.isDns() && ds.isSslEnabled()) {
 				httpsDeliveryServices.add(ds);
 			}
@@ -357,7 +318,7 @@ public class SnapshotEventsProcessor {
 		return existingConfig;
 	}
 
-	public void setExistingConfig( final JsonNode config ){
+	private void setExistingConfig( final JsonNode config ){
 		existingConfig = config;
 	}
 }

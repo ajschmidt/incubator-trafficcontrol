@@ -1399,7 +1399,9 @@
       "coverageZoneOnly": "false",
       "routingName": "tr",
       "regionalGeoBlocking": "false",
-      "matchsets": [{
+      "matchsets": [
+        null,
+        {
         "protocol": "HTTP",
         "matchlist": [{
           "regex": ".*\\.http-only-test\\..*",

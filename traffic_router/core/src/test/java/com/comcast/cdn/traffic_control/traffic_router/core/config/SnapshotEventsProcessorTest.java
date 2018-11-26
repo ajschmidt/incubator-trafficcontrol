@@ -118,51 +118,24 @@ public class SnapshotEventsProcessorTest {
 	}
 
 	@Test
-	public void getHttpsDeliveryServices_updated() throws Exception {
+	public void getSSLEnabledChangeEvents_updated() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
-		List<DeliveryService> httpsDs = sep.getSSLEnableDeliveryServices();
-		assertThat("Expected to find 4 https delivery services but found " + httpsDs.size(), httpsDs.size() == 4);
+		List<DeliveryService> httpsDs = sep.getSSLEnabledChangeEvents();
+		assertThat("Expected to find 4 changed https delivery services but found " + httpsDs.size(),
+				httpsDs.size() == 4);
 		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
 				httpsDs.toString().contains("http-only-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("https-only-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-and-https-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-to-https-test"));
 	}
 
 	@Test
-	public void getHttpsDeliveryServices_new() throws Exception {
+	public void getSSLEnabledChangeEvents_new() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, updateJo);
-		List<DeliveryService> httpsDs = sep.getSSLEnableDeliveryServices();
-		assertThat("Expected to find 5 https delivery services but found " + httpsDs.size(), httpsDs.size() == 5);
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-only-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("https-only-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-and-https-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-to-https-test"));
+		List<DeliveryService> httpsDs = sep.getSSLEnabledChangeEvents();
+		assertThat("Expected to find 5 changed delivery services but found " + httpsDs.size(), httpsDs.size() == 5);
 		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
 				httpsDs.toString().contains("http-addnew-test"));
 	}
 
-	@Test
-	public void getHttpsDeliveryServices_delete() throws Exception {
-		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, newDsSnapJo);
-		List<DeliveryService> httpsDs = sep.getSSLEnableDeliveryServices();
-		assertThat("Expected to find 4 https delivery services but found " + httpsDs.size(), httpsDs.size() == 4);
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-only-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("https-only-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-and-https-test"));
-		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
-				httpsDs.toString().contains("http-to-https-test"));
-	}
 	@Test
 	public void getChangeEvents() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(updateJo, baselineJo);
