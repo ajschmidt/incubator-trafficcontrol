@@ -5,8 +5,8 @@
       "type": "EDGE",
       "profile": "EDGE_STATIC",
       "status": "REPORTED",
-      "hashId": "edge-cache-001@xmpp.cdn.example.com",
-      "fqdn": "edge-cache-001.thecdn.example.com",
+      "hashId": "edge-cache-000",
+      "fqdn": "edge-cache-000.thecdn.example.com",
       "port": "8090",
       "ip": "12.34.0.100",
       "ip6": "2001:dead:beef:0:C::10/64",
@@ -16,7 +16,7 @@
       "interfaceName": "bond0",
       "deliveryServicesModified": "2008-11-09T02:16:39.283473Z",
       "deliveryServices": {
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
+        "dns-test": ["edge.dns-test.thecdn.example.com"],
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"]
       }
     },
@@ -35,7 +35,7 @@
       "interfaceName": "bond0",
       "deliveryServicesModified": "2008-11-09T02:16:39.283473Z",
       "deliveryServices": {
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
+        "dns-test": ["edge.dns-test.thecdn.example.com"],
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"]
       }
     },
@@ -54,7 +54,7 @@
       "interfaceName": "bond0",
       "deliveryServicesModified": "2008-11-09T02:16:39.283473Z",
       "deliveryServices": {
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"],
+        "dns-test": ["edge.dns-test.thecdn.example.com"],
         "https-only-test": ["edge-cache-002.https-only-test.thecdn.example.com"]
       }
     },
@@ -375,7 +375,8 @@
       "interfaceName": "bond0",
       "deliveryServicesModified": "2008-11-09T02:16:39.283473Z",
       "deliveryServices": {
-        "http-to-https-test": ["edge-cache-070.http-to-https-test.thecdn.example.com"]
+        "http-to-https-test": ["edge-cache-070.http-to-https-test.thecdn.example.com"],
+        "https-dns-test": ["edge.https-dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-071": {
@@ -393,7 +394,8 @@
       "interfaceName": "bond0",
       "deliveryServicesModified": "2008-11-09T02:16:39.283473Z",
       "deliveryServices": {
-        "http-to-https-test": ["edge-cache-071.http-to-https-test.thecdn.example.com"]
+        "http-to-https-test": ["edge-cache-071.http-to-https-test.thecdn.example.com"],
+        "https-dns-test": ["edge.https-dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-072": {
@@ -411,7 +413,8 @@
       "interfaceName": "bond0",
       "deliveryServicesModified": "2008-11-09T02:16:39.283473Z",
       "deliveryServices": {
-        "http-to-https-test": [ "edge-cache-072.http-to-https-test.thecdn.example.com"]
+        "http-to-https-test": [ "edge-cache-072.http-to-https-test.thecdn.example.com"],
+        "https-dns-test": ["edge.https-dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-080": {
@@ -607,7 +610,7 @@
       },
       "geolocationProvider": "maxmindGeolocationService",
       "ttl": "30",
-      "maxDnsIpsForLocation": "2",
+      "maxDnsIpsForLocation": "3",
       "ip6RoutingEnabled": "false"
     },
     "https-only-test": {
@@ -1289,7 +1292,7 @@
       "matchsets": [{
         "protocol": "DNS",
         "matchlist": [{
-          "regex": ".*\\.http-only-test\\..*",
+          "regex": ".*\\.https-dns-test\\..*",
           "match-type": "HOST"
         }]
       }],

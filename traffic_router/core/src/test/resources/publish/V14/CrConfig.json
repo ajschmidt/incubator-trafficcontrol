@@ -16,8 +16,7 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"]
       },
       "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
@@ -37,7 +36,7 @@
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
         "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
+        "dns-test": ["edge.dns-test.thecdn.example.com"]
       },
       "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
@@ -56,8 +55,8 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-002.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-002.http-only-test.thecdn.example.com"],
+        "dns-test": ["edge.dns-test.thecdn.example.com"]
       },
       "deliveryServicesModified": "2018-11-09T01:46:39.283473Z"
     },
@@ -510,7 +509,7 @@
       "location": "dc-chicago",
       "ip6": "2001:dead:beef:123:1::2",
       "api.port": "3333",
-      "fqdn": "testing-tr-02.cdn.example.com",
+      "fqdn": "testing-tr-02.thecdn.example.com",
       "ip": "12.34.20.2",
       "profile": "ROUTER_TEST"
     },
@@ -520,7 +519,7 @@
       "location": "dc-chicago",
       "ip6": "2001:dead:beef:123:1::1",
       "api.port": "3333",
-      "fqdn": "testing-tr-01.cdn.example.com",
+      "fqdn": "testing-tr-01.thecdn.example.com",
       "ip": "12.34.20.1",
       "profile": "ROUTER_TEST"
     }
@@ -1419,8 +1418,7 @@
       "modified": "1465088800",
       "bypassDestination": {
         "DNS": {
-          "ttl": "30",
-          "cname": "www.example.com"
+          "ttl": "30"
         }
       },
       "domains": [

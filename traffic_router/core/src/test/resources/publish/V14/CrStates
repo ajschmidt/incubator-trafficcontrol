@@ -142,7 +142,7 @@
       "disabledLocations": [],
       "isAvailable": true
     },
-    "test-dns": {
+    "dns-test": {
       "disabledLocations": [],
       "isAvailable": true
     },

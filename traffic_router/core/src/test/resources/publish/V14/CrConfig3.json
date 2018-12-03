@@ -659,7 +659,7 @@
       },
       "geolocationProvider": "maxmindGeolocationService",
       "ttl": "30",
-      "maxDnsIpsForLocation": "2",
+      "maxDnsIpsForLocation": "3",
       "ip6RoutingEnabled": "false"
     },
     "https-only-test": {

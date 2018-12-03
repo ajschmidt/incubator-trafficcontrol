@@ -552,7 +552,6 @@
     "https-only-test": {
       "anyModified": "2000-11-09T01:46:39.283473Z",
       "modified": "1000000000",
-      "serversModified": "1000000000",
       "sslEnabled": "true",
       "protocol": {
         "acceptHttp" : "false",

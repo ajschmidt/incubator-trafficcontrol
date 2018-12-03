@@ -37,6 +37,16 @@ import org.junit.FixMethodOrder;
 import org.junit.Test;
 import org.junit.experimental.categories.Category;
 import org.junit.runners.MethodSorters;
+import org.xbill.DNS.DClass;
+import org.xbill.DNS.Message;
+import org.xbill.DNS.Name;
+import org.xbill.DNS.Options;
+import org.xbill.DNS.Rcode;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.Resolver;
+import org.xbill.DNS.Section;
+import org.xbill.DNS.SimpleResolver;
+import org.xbill.DNS.Type;
 
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SNIHostName;
@@ -232,7 +242,7 @@ public class RouterTestV14 {
 			httpClient.execute(httpPost).close();
 
 			// Default interval for polling cr config is 10 seconds
-			Thread.sleep(25 * 1000);
+			Thread.sleep(55 * 1000);
 		}
 	}
 
@@ -423,16 +433,55 @@ public class RouterTestV14 {
 	}
 
 	@Test
+	// before itRejectsCrConfigWithMissingCert
+	public void digDefaultCrConfig() throws Exception {
+		Message response = lookupTest("edge.dns-test.thecdn.example.com",  Rcode.NOERROR);
+		final String expectedIps[] = {"12.34.0.101","12.34.0.102"};
+		recordTest(response, expectedIps, Section.ANSWER);
+		final String expectedTrs[] = {"testing-tr-01.thecdn.example.com.","testing-tr-02.thecdn.example.com."};
+		recordTest(response, expectedTrs, Section.AUTHORITY);
+		lookupTest("edge.https-dns-test.thecdn.example.com",  Rcode.NXDOMAIN);
+		lookupTest("edge.https-only-test.thecdn.example.com",  Rcode.NXDOMAIN);
+	}
+
+
+	private Message lookupTest(final String hostname, final int expectedResult) throws Exception {
+		Options.set("verbose");
+		Resolver resolver = new SimpleResolver("127.0.0.1");
+		resolver.setPort(Integer.parseInt(System.getProperty("dns.udp.port")));
+		Name name = Name.fromString(hostname, Name.root);
+		Record rec = Record.newRecord(name, Type.ANY, DClass.IN);
+		Message query = Message.newQuery(rec);
+		Message response = resolver.send(query);
+		assertThat("DNS Result '"+Rcode.string(expectedResult)+"' expected response but got "
+						+response.getRcode(),response.getRcode(), equalTo(expectedResult));
+		return response;
+	}
+
+	private void recordTest(final Message response, final String[] expectedRecords, final int sectionDex){
+		final int rCnt = response.getSectionRRsets(sectionDex)[0].size();
+		final int expectedCnt = expectedRecords.length;
+		assertThat("Expected "+expectedCnt+" records but there were :"+rCnt,rCnt,equalTo(expectedCnt));
+		response.getSectionRRsets(sectionDex)[0].rrs().forEachRemaining(rr-> {
+			String rs = ((Record)rr).rdataToString();
+			assertThat("Expected the record to be one of "+expectedRecords+" but IP was "+rs,
+					rs, isIn(expectedRecords));
+		});
+	}
+
+	@Test
 	public void itRejectsCrConfigWithMissingCert() throws Exception {
 		/* Test summary
 		- Already on default crconfig from initialization
 		- Do resolve httpOnly and get 302
 		- Do resolve httpsNoCert and get 500+
 		- Switch to crconfig2
+		- crconfig2 does not get used because its waiting for SSL cert for httpsNoCert
 		- Do resolve httpOnly and get 302
+		- Do resolve httpsNoCert and get 500+ because still using crconfig 1
 		- Switch to crconfig3
 		- Do resolve httpOnly and get 302
-		- Do resolve httpsNoCert and get 500+
+		- Do resolve httpsNoCert and get 500+ because ssl=false
 		- Switch to crconfig4
 		- Switch to sslkeys-missing-1.json (get /certificates)
 		- Do resolve https-additional and get 302
@@ -529,7 +578,7 @@ public class RouterTestV14 {
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)){
 			int code = response.getStatusLine().getStatusCode();
-			assertThat("Expected to get an ssl handshake error! But got: "+code,
+			assertThat("Expected to get an server error! But got: "+code,
 					code, greaterThan(500));
 		}
 		catch (javax.net.ssl.SSLHandshakeException she)
@@ -672,6 +721,21 @@ public class RouterTestV14 {
 		} finally {
 			if (response != null) response.close();
 		}
+	}
+
+	@Test
+	// after itRejectsCrConfigWithMissingCert
+	public void zdigCrConfig4() throws Exception {
+		Message response =
+				lookupTest("edge.dns-test.thecdn.example.com",  Rcode.NOERROR);
+		final String expectedIps[] = {"12.34.0.100","12.34.0.101","12.34.0.102"};
+		recordTest(response, expectedIps, Section.ANSWER);
+		final String expectedTrs[] = {"testing-tr-01.thecdn.example.com.","testing-tr-02.thecdn.example.com."};
+		recordTest(response, expectedTrs, Section.AUTHORITY);
+		response = lookupTest("edge.https-dns-test.thecdn.example.com",  Rcode.NOERROR);
+		final String expectedIPs[] = {"12.34.7.100","12.34.7.101","12.34.7.102"};
+		recordTest(response, expectedIPs, Section.ANSWER);
+		lookupTest("edge.https-only-test.thecdn.example.com",  Rcode.NXDOMAIN);
 	}
 
 	// This is a workaround to get HttpClient to do the equivalent of

@@ -1281,12 +1281,11 @@
       "ip6RoutingEnabled": "false"
     },
     "http-and-https-test": {
-      "anyModified": "3000-11-09T01:46:39.283473Z",
-      "modified": "1000000000",
+      "anyModified": "2000-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
       "protocol": {
-        "acceptHttp" : "true",
         "acceptHttps" : "true",
+        "acceptHttp" : "true",
         "redirectToHttps" : "false"
       },
       "domains": ["http-and-https-test.thecdn.example.com"],
@@ -1326,7 +1325,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-to-https-test": {
-      "anyModified": "3000-11-09T01:46:39.283473Z",
+      "anyModified": "2000-11-09T01:46:39.283473Z",
       "modified": "1000000000",
       "sslEnabled": "true",
       "protocol": {
@@ -1348,7 +1347,7 @@
       "ttl": "3600",
       "ip6RoutingEnabled": "false",
       "dispersion": {
-        "limit": 1,
+        "limit": 2,
         "shuffled": "true"
       },
       "coverageZoneOnly": "false",

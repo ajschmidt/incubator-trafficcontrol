@@ -1,3 +1,17 @@
+/*
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package com.comcast.cdn.traffic_control.traffic_router.core.config;
 
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
@@ -64,14 +78,10 @@ public class SnapshotEventsProcessorTest {
 
 	@Test
 	public void mineEventsFromDBDiffsNoChanges() throws Exception {
-		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, baselineJo);
+		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, null);
 		assertThat("LoadAll should be true because the snapshot does not have a version attribute.", snapEvents.shouldLoadAll());
 		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
-		try {
-			snapEvents = SnapshotEventsProcessor.diffCrConfigs(null, baselineJo);
-		} catch (JsonUtilsException jue) {
-			assertThat("LoadAll should be true because there is no new snapshot.", jue != null);
-		}
+		snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, baselineJo);
 		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
 	}
 
@@ -97,6 +107,16 @@ public class SnapshotEventsProcessorTest {
 				snapEvents.getCreationEvents().size() == 1);
 		assertThat("4 links should have been updated but there were only "+snapEvents.getMappingEvents().size(),
 				snapEvents.getMappingEvents().size() == 4);
+	}
+
+	@Test
+	public void diffCrConfigNoChanges() throws Exception {
+		ConfigHandler.setLastSnapshotTimestamp(14650848001l);
+		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(updateJo, updateJo);
+		assertThat("LoadAll should be false.", !snapEvents.shouldLoadAll());
+		assertThat("0 Delivery services should have been added but there was "+snapEvents.getCreationEvents().size(),
+				snapEvents.getCreationEvents().size() == 0);
+
 	}
 
 	@Test
@@ -131,7 +151,9 @@ public class SnapshotEventsProcessorTest {
 	public void getSSLEnabledChangeEvents_new() throws Exception {
 		final SnapshotEventsProcessor sep = SnapshotEventsProcessor.diffCrConfigs(newDsSnapJo, updateJo);
 		List<DeliveryService> httpsDs = sep.getSSLEnabledChangeEvents();
-		assertThat("Expected to find 5 changed delivery services but found " + httpsDs.size(), httpsDs.size() == 5);
+		// Tests JSON equivalence operator for change in order of members vs. actual data value changes
+		// acceptHttps and acceptHttp are swapped in one service and dispersion:limit is changed to 2 in the other
+		assertThat("Expected to find 4 changed delivery services but found " + httpsDs.size(), httpsDs.size() == 4);
 		assertThat("Did not get the expected list of Https Delivery Services " + httpsDs.toString(),
 				httpsDs.toString().contains("http-addnew-test"));
 	}

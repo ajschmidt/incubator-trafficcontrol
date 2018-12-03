@@ -44,14 +44,13 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@SuppressWarnings({"PHPMD:ExcessivePublicCount","PMD.TooManyFields","PMD.CyclomaticComplexity","PMD" +
-		".AvoidDuplicateLiterals"})
+@SuppressWarnings({"PMD.TooManyFields","PMD.CyclomaticComplexity", "PMD.AvoidDuplicateLiterals"})
 public class DeliveryService {
 	private static final Logger LOGGER = Logger.getLogger(DeliveryService.class);
 	private final String id;
@@ -98,7 +97,6 @@ public class DeliveryService {
 	private final boolean redirectToHttps;
 	private final DeepCachingType deepCache;
 	private String consistentHashRegex;
-
 
 	public enum DeepCachingType {
 		NEVER,
@@ -177,6 +175,10 @@ public class DeliveryService {
 	@JsonIgnore
 	public JsonNode getTtls() {
 		return ttls;
+	}
+
+	public JsonNode getMatchsets() {
+		return matchsets;
 	}
 
 	@Override
@@ -416,9 +418,6 @@ public class DeliveryService {
 		return deepCache;
 	}
 
-	public JsonNode getMatchsets() {
-		return matchsets;
-	}
 
 	public boolean appendQueryString() {
 		return shouldAppendQueryString;
