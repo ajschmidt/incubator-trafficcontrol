@@ -28,7 +28,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.time.Instant;
+//import java.time.Instant;
 
 public class SnapshotEventsProcessor {
 	private static final Logger LOGGER = Logger.getLogger(SnapshotEventsProcessor.class);
@@ -64,17 +64,17 @@ public class SnapshotEventsProcessor {
 			sepRet.loadall = true;
 			return sepRet;
 		}
-		// Load the entire crConfig from the snapshot if it is not version a version supporting
+		// Load the entire crConfig from the snapshot if it is not a version supporting
 		// DS Snapshots
 		if (!sepRet.versionSupportsDsSnapshots(newSnapDb)){
-			LOGGER.info("In diffCrConfig got old version of crConfig.");
+			LOGGER.info("In diffCrConfig 'DS Snapshot' feature turned off.");
 			sepRet.parseDeliveryServices(newSnapDb);
 			sepRet.loadall = true;
 			return sepRet;
 		}
-		// Load the entire crConfig from the snapshot if the load flag is set in the snapshot
-		final JsonNode config = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.configKey);
-		if (Instant.parse(JsonUtils.optString(config, "modified", "1970-01-01T00:00:00Z")).isAfter(ConfigHandler.getLastSnapshotInstant())) {
+		// Verify that only DS related configurations have changed
+		if (sepRet.hasDiffsForcingReload(newSnapDb, existingDb)){
+			LOGGER.info("hasDiffsForcingReload true");
 			sepRet.parseDeliveryServices(newSnapDb);
 			sepRet.loadall = true;
 			return sepRet;
@@ -92,34 +92,86 @@ public class SnapshotEventsProcessor {
 		return snapDb.has(ConfigHandler.versionKey);
 	}
 
+	private boolean hasDiffsForcingReload(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {
+		if (!JsonUtils.equalSubtrees(newSnapDb, existingConfig,ConfigHandler.configKey)) {
+			LOGGER.info("Config diff found");
+			return true;
+		}
+		if (!JsonUtils.equalSubtrees(newSnapDb, existingConfig,"contentRouters")) {
+			LOGGER.info("ContentRouters diff found");
+			return true;
+		}
+		if (!JsonUtils.equalSubtrees(newSnapDb, existingConfig,"monitors")) {
+			LOGGER.info("Monitors diff found");
+			return true;
+		}
+		if (!JsonUtils.equalSubtreesExcept(newSnapDb, existingConfig,"stats","date")) {
+			LOGGER.info("Stats diff found");
+			return true;
+		}
+		if (!JsonUtils.equalSubtrees(newSnapDb, existingConfig,"edgeLocations")) {
+			LOGGER.info("EdgeLocation diff found");
+			return true;
+		}
+		return !compareContentServers(newSnapDb,existingConfig);
+	}
+
+	private boolean compareContentServers(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {
+		final JsonNode cs1 = JsonUtils.getJsonNode(newSnapDb, "contentServers");
+		final JsonNode cs2 = JsonUtils.getJsonNode(existingConfig, "contentServers");
+
+		if (cs1.size() != cs2.size())
+		{
+			LOGGER.info("ContentServers Size diff found");
+			return false;
+		}
+		final Iterator<String> cs1fields = cs1.fieldNames();
+		final Iterator<String> cs2fields = cs2.fieldNames();
+		while (cs1fields.hasNext()) {
+			final String csName = cs1fields.next();
+			if (!JsonUtils.equalSubtreesExcept(cs1,cs2,csName,"deliveryServices")) {
+				LOGGER.info("ContentServers CS1, CS2 diff found for "+csName);
+				return false;
+			}
+		}
+		while (cs2fields.hasNext()) {
+			final String csName = cs2fields.next();
+			if (!cs1.has(csName)) {
+				LOGGER.info("ContentServers CS2 extra found");
+				return false;
+			}
+		}
+		return true;
+	}
+
 	private void diffCacheMappings(final JsonNode newSnapDb, final JsonNode existingDb) throws JsonUtilsException,
 			ParseException {
 		setExistingConfig(JsonUtils.getJsonNode(existingDb, ConfigHandler.configKey));
 		final JsonNode newServers = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.contentServersKey);
 		final Iterator<String> newServersIter = newServers.fieldNames();
 		while (newServersIter.hasNext()) {
-			final String cid = newServersIter.next();
-			final JsonNode newCacheJo = newServers.get(cid);
-			if (!newCacheJo.has(ConfigHandler.deliveryServicesKey)) {
+			final String cacheId = newServersIter.next();
+			final JsonNode newCacheJson = newServers.get(cacheId);
+			if (!newCacheJson.has(ConfigHandler.deliveryServicesKey)) {
 				continue;
 			}
 			final Iterator<String> dsrKeys =
-					JsonUtils.getJsonNode(newCacheJo, ConfigHandler.deliveryServicesKey).fieldNames();
+					JsonUtils.getJsonNode(newCacheJson, ConfigHandler.deliveryServicesKey).fieldNames();
 			while (dsrKeys.hasNext()) {
 				final String dsrId = dsrKeys.next();
 				if (serverModEvents.contains(dsrId)) {
-					addMappingEvent(newCacheJo, cid);
+					addMappingEvent(newCacheJson, cacheId);
 				}
 			}
-			if (dssLinkChangeDetected(cid, newCacheJo, existingDb)) {
-				addMappingEvent(newCacheJo, cid);
+			if (dssLinkChangeDetected(cacheId, newCacheJson, existingDb)) {
+				addMappingEvent(newCacheJson, cacheId);
 			}
 		}
 
 		parseDeleteCacheEvents(JsonUtils.getJsonNode(existingDb, ConfigHandler.contentServersKey), newServers);
 	}
 
-	private boolean dssLinkChangeDetected(final String cid, final JsonNode newCacheJo, final JsonNode existingDb) throws
+	private boolean dssLinkChangeDetected(final String cid, final JsonNode newCacheJson, final JsonNode existingDb) throws
 			JsonUtilsException {
 		if (existingDb == null)
 		{
@@ -130,23 +182,23 @@ public class SnapshotEventsProcessor {
 		    return true;
 		}
 		final JsonNode existingCache = JsonUtils.getJsonNode(existingServers,cid);
-		if (newCacheJo.has(ConfigHandler.deliveryServicesKey) && !existingCache.has(ConfigHandler.deliveryServicesKey)) {
+		if (newCacheJson.has(ConfigHandler.deliveryServicesKey) && !existingCache.has(ConfigHandler.deliveryServicesKey)) {
 			return true;
 		}
-		if (newCacheJo.has(ConfigHandler.deliveryServicesKey)) {
-			final JsonNode newDsLinks = JsonUtils.getJsonNode(newCacheJo, ConfigHandler.deliveryServicesKey);
+		if (newCacheJson.has(ConfigHandler.deliveryServicesKey)) {
+			final JsonNode newDsLinks = JsonUtils.getJsonNode(newCacheJson, ConfigHandler.deliveryServicesKey);
 			return !newDsLinks.equals(JsonUtils.getJsonNode(existingCache, ConfigHandler.deliveryServicesKey));
 		} else {
 			return true;
 		}
 	}
 
-	private void addMappingEvent(final JsonNode newCacheJo, final String cid) throws JsonUtilsException, ParseException {
+	private void addMappingEvent(final JsonNode newCacheJson, final String cid) throws JsonUtilsException, ParseException {
 		if (mappingEvents.keySet().contains(cid)) {
 			return;
 		}
 		final Cache modCache = new Cache(cid, cid, 1);
-		final List<DeliveryServiceReference> dsRefs = parseDsRefs(newCacheJo);
+		final List<DeliveryServiceReference> dsRefs = parseDsRefs(newCacheJson);
 		if (!dsRefs.isEmpty()) {
 			modCache.setDeliveryServices(dsRefs);
 		}
@@ -162,14 +214,14 @@ public class SnapshotEventsProcessor {
 		});
 	}
 
-	private List<DeliveryServiceReference> parseDsRefs(final JsonNode cjo) throws JsonUtilsException, ParseException{
+	private List<DeliveryServiceReference> parseDsRefs(final JsonNode cacheJson) throws JsonUtilsException, ParseException{
 		final List<DeliveryServiceReference> dsRefs = new ArrayList<>();
-		if (cjo.has(ConfigHandler.deliveryServicesKey)) {
-			final JsonNode dsRefsJo = JsonUtils.getJsonNode(cjo, ConfigHandler.deliveryServicesKey);
-			final Iterator<String> dsrfs = dsRefsJo.fieldNames();
+		if (cacheJson.has(ConfigHandler.deliveryServicesKey)) {
+			final JsonNode dsRefsJson = JsonUtils.getJsonNode(cacheJson, ConfigHandler.deliveryServicesKey);
+			final Iterator<String> dsrfs = dsRefsJson.fieldNames();
 			while (dsrfs.hasNext()) {
 				final String dsid = dsrfs.next();
-				final JsonNode dso = dsRefsJo.get(dsid);
+				final JsonNode dso = dsRefsJson.get(dsid);
 				DeliveryServiceReference newDsref = null;
 				if (dso.isArray() && dso.size() > 0) {
 					final JsonNode nameNode = dso.get(0);
@@ -238,7 +290,7 @@ public class SnapshotEventsProcessor {
 						addEvent(updateEvents, newService, deliveryServiceId);
 					}
 				} else {
-					LOGGER.info(("deleted Service = "+deliveryServiceId));
+					LOGGER.info(("deleted Delivery Service = "+deliveryServiceId));
 					addEvent(deleteEvents, compDeliveryService, deliveryServiceId);
 				}
 			}

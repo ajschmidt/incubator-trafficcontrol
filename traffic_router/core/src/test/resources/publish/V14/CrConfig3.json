@@ -1,12 +1,28 @@
 {
   "version": 1.4,
   "contentServers": {
+    "odol-atsmid-12": {
+      "cacheGroup": "mid-1",
+      "fqdn": "odol-atsmid-12.thecdn.example.com",
+      "hashCount": 1000,
+      "hashId": "odol-atsmid-12",
+      "httpsPort": 443,
+      "interfaceName": "bond0",
+      "ip": "12.34.10.253",
+      "ip6": "2001:dead:beef:145::2/64",
+      "locationId": "location-1",
+      "port": 80,
+      "profile": "MID",
+      "status": "REPORTED",
+      "type": "MID",
+      "routingDisabled": 0
+    },
     "edge-cache-000": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
       "status": "REPORTED",
-      "hashId": "edge-cache-001@xmpp.cdn.example.com",
-      "fqdn": "edge-cache-001.thecdn.example.com",
+      "hashId": "edge-cache-000",
+      "fqdn": "edge-cache-000.thecdn.example.com",
       "port": "8090",
       "ip": "12.34.0.100",
       "ip6": "2001:dead:beef:0:C::10/64",
@@ -14,7 +30,6 @@
       "locationId": "location-0",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
         "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
@@ -33,7 +48,6 @@
       "locationId": "location-0",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
         "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
@@ -52,7 +66,6 @@
       "locationId": "location-0",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "https-only-test": ["edge-cache-002.https-only-test.thecdn.example.com"],
         "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
@@ -71,7 +84,6 @@
       "locationId": "location-1",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-010.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-010.steering-target-2.thecdn.example.com"],
@@ -95,7 +107,6 @@
       "locationId": "location-1",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-011.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-011.steering-target-2.thecdn.example.com"],
@@ -119,7 +130,6 @@
       "locationId": "location-1",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-012.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-012.steering-target-2.thecdn.example.com"],
@@ -143,11 +153,11 @@
       "locationId": "location-2",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-2": ["edge-cache-020.steering-test-2.thecdn.example.com"],
         "steering-target-4": ["edge-cache-020.steering-target-4.thecdn.example.com"],
-        "steering-target-3": ["edge-cache-020.steering-target-3.thecdn.example.com"]
+        "steering-target-3": ["edge-cache-020.steering-target-3.thecdn.example.com"],
+        "https-dns-test": ["edge.https-dns-test.thecdn.example.com"]
       }
     },    
     "edge-cache-021": {
@@ -163,11 +173,11 @@
       "locationId": "location-2",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-2": ["edge-cache-021.steering-test-2.thecdn.example.com"],
         "steering-target-4": ["edge-cache-021.steering-target-4.thecdn.example.com"],
-        "steering-target-3": ["edge-cache-021.steering-target-3.thecdn.example.com"]
+        "steering-target-3": ["edge-cache-021.steering-target-3.thecdn.example.com"],
+        "https-dns-test": ["edge.https-dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-022": {
@@ -183,7 +193,6 @@
       "locationId": "location-2",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-2": ["edge-cache-022.steering-test-2.thecdn.example.com"],
         "steering-target-4": ["edge-cache-022.steering-target-4.thecdn.example.com"],
@@ -203,7 +212,6 @@
       "locationId": "location-3",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-030.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-030.steering-target-2.thecdn.example.com"],
@@ -229,7 +237,6 @@
       "locationId": "location-3",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-031.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-031.steering-target-2.thecdn.example.com"],
@@ -255,7 +262,6 @@
       "locationId": "location-3",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-032.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-032.steering-target-2.thecdn.example.com"],
@@ -281,7 +287,6 @@
       "locationId": "location-4",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-040.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-040.steering-target-2.thecdn.example.com"],
@@ -311,7 +316,6 @@
       "locationId": "location-4",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-041.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-041.steering-target-2.thecdn.example.com"],
@@ -341,7 +345,6 @@
       "locationId": "location-4",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "steering-test-1": ["edge-cache-042.steering-test-1.thecdn.example.com"],
         "steering-target-2": ["edge-cache-042.steering-target-2.thecdn.example.com"],
@@ -371,7 +374,6 @@
       "locationId": "location-7",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "http-to-https-test": ["edge-cache-070.http-to-https-test.thecdn.example.com"]
       }
@@ -389,7 +391,6 @@
       "locationId": "location-7",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "http-to-https-test": ["edge-cache-071.http-to-https-test.thecdn.example.com"]
       }
@@ -407,7 +408,6 @@
       "locationId": "location-7",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "http-to-https-test": [ "edge-cache-072.http-to-https-test.thecdn.example.com"]
       }
@@ -425,7 +425,6 @@
       "locationId": "location-8",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "http-and-https-test": ["edge-cache-080.http-and-https-test.thecdn.example.com"]
       }
@@ -443,7 +442,6 @@
       "locationId": "location-8",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "http-and-https-test": ["edge-cache-081.http-and-https-test.thecdn.example.com"]
       }
@@ -461,7 +459,6 @@
       "locationId": "location-8",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "http-and-https-test": [ "edge-cache-082.http-and-https-test.thecdn.example.com"]
       }
@@ -479,7 +476,6 @@
       "locationId": "location-9",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "https-nocert": ["edge-cache-090.https-nocert.thecdn.example.com"]
       }
@@ -497,7 +493,6 @@
       "locationId": "location-9",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "https-nocert": ["edge-cache-091.https-nocert.thecdn.example.com"]
       }
@@ -515,63 +510,8 @@
       "locationId": "location-9",
       "hashCount": 1000,
       "interfaceName": "bond0",
-      "deliveryServicesModified": "2008-11-09T02:06:39.283473Z",
       "deliveryServices": {
         "https-nocert": ["edge-cache-092.https-nocert.thecdn.example.com"]
-      }
-    },
-    "edge-cache-900": {
-      "type": "EDGE",
-      "profile": "EDGE_STATIC",
-      "status": "REPORTED",
-      "hashId": "edge-cache-900@xmpp.cdn.example.com",
-      "fqdn": "edge-cache-900.thecdn.example.com",
-      "port": "8090",
-      "ip": "12.34.90.100",
-      "ip6": "2001:dead:beef:1:C::1A/64",
-      "cacheGroup": "cache-group-1",
-      "locationId": "location-1",
-      "hashCount": 1000,
-      "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
-      "deliveryServices": {
-        "http-only-test": ["edge-cache-900.http-only-test.thecdn.example.com"]
-      }
-    },
-    "edge-cache-901": {
-      "type": "EDGE",
-      "profile": "EDGE_STATIC",
-      "status": "REPORTED",
-      "hashId": "edge-cache-901@xmpp.cdn.example.com",
-      "fqdn": "edge-cache-901.thecdn.example.com",
-      "port": "8090",
-      "ip": "12.34.90.101",
-      "ip6": "2001:dead:beef:1:C::11/64",
-      "cacheGroup": "cache-group-1",
-      "locationId": "location-1",
-      "hashCount": 1000,
-      "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
-      "deliveryServices": {
-        "http-only-test": ["edge-cache-901.http-only-test.thecdn.example.com"]
-      }
-    },
-    "edge-cache-902": {
-      "type": "EDGE",
-      "profile": "EDGE_STATIC",
-      "status": "REPORTED",
-      "hashId": "edge-cache-902@xmpp.cdn.example.com",
-      "fqdn": "edge-cache-902.thecdn.example.com",
-      "port": "8090",
-      "ip": "12.34.90.102",
-      "ip6": "2001:dead:beef:1:C::12/64",
-      "cacheGroup": "cache-group-1",
-      "locationId": "location-1",
-      "hashCount": 1000,
-      "interfaceName": "bond0",
-      "deliveryServicesModified": "2018-11-09T02:06:39.283473Z",
-      "deliveryServices": {
-        "http-only-test": ["edge-cache-902.http-only-test.thecdn.example.com"]
       }
     }
   },
@@ -1313,7 +1253,7 @@
   "stats": {
     "tm_version": "1.5.0-3027.8d600a8e",
     "CDN_name": "thecdn",
-    "tm_user": "admin3",
+    "tm_user": "admin",
     "tm_path": "/tools/write_crconfig/thecdn",
     "date": 1465091800,
     "tm_host": "localhost:8889"
@@ -1353,7 +1293,6 @@
     }
   },
   "config": {
-    "modified": "3000-11-09T02:06:39.283473Z",
     "certificate.api.url": "http://${toHostname}/api/1.3/cdns/name/${cdnName}/sslkeys.json",
     "federationmapping.polling.url": "http://${toHostname}/internal/api/1.3/federations.json",
     "federationmapping.polling.interval": "600000",

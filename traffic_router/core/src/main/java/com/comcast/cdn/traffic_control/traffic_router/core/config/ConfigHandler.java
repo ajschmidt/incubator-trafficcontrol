@@ -157,10 +157,10 @@ public class ConfigHandler {
 			final ObjectMapper mapper = new ObjectMapper();
 			final JsonNode jo = mapper.readTree(snapJson);
 			final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
-			final ObjectMapper compmapper = new ObjectMapper();
+			final ObjectMapper compMapper = new ObjectMapper();
 			JsonNode cjo = null;
 			if (compJson != null) {
-				cjo = compmapper.readTree(compJson);
+				cjo = compMapper.readTree(compJson);
 			}
 			// Check to see if this is a new Snapshot
 			final long sts = getSnapshotTimestamp(stats);
@@ -183,9 +183,9 @@ public class ConfigHandler {
 						ConfigHandler.setLastSnapshotTimestamp(sts);
 						return true;
 					}
-				} else if(processChangeEvents(jo, snapshotEventsProcessor)) {
-						ConfigHandler.setLastSnapshotTimestamp(sts);
-						return true;
+				} else if (processChangeEvents(jo, snapshotEventsProcessor)) {
+					ConfigHandler.setLastSnapshotTimestamp(sts);
+					return true;
 				}
 			} catch (ParseException e) {
 				LOGGER.error("Exiting processConfig: Failed to process config for snapshot from " + date, e);
@@ -207,8 +207,6 @@ public class ConfigHandler {
 		CacheRegister cacheRegister = null;
 		if (trafficRouterManager.getTrafficRouter() != null) {
 			cacheRegister = trafficRouterManager.getTrafficRouter().getCacheRegister();
-			final int i = cacheRegister.hashCode();
-			LOGGER.debug(i);
 		} else {
 			cacheRegister = new CacheRegister();
 		}
@@ -249,7 +247,7 @@ public class ConfigHandler {
 			}
 		}
 		if (cancelled.get()) {
-			LOGGER.info("Exiting waitForSslCerts: processing of config was CANCELED because a newer one is ready.");
+			LOGGER.info("Exiting waitForSslCerts: processing of config was CANCELLED because a newer one is ready.");
 			return false;
 		}
 		return true;
@@ -269,15 +267,23 @@ public class ConfigHandler {
 		}
 
 		if (snapshotEventsProcessor.getUpdateEvents() != null && !snapshotEventsProcessor.getUpdateEvents().isEmpty()) {
-			getCertificatesPublisher().getDeliveryServices().replaceAll(ds ->
-					getFirst(snapshotEventsProcessor.getUpdateEvents().values(), uds -> uds.getId().equals(ds.getId()))
-							.orElse(ds));
+			getCertificatesPublisher().getDeliveryServices().replaceAll(deliveryService -> {
+				return findFirst(
+					snapshotEventsProcessor.getUpdateEvents().values(),
+					updatedDs ->  updatedDs.getId().equals(deliveryService.getId())
+				)
+				.orElse(deliveryService);
+			});
 		}
 
 		if (snapshotEventsProcessor.getDeleteEvents() != null && !snapshotEventsProcessor.getDeleteEvents().isEmpty()) {
-			getCertificatesPublisher().getDeliveryServices().removeIf(ds ->
-					getFirst(snapshotEventsProcessor.getDeleteEvents().values(),
-							uds -> uds.getId().equals(ds.getId())).isPresent());
+			getCertificatesPublisher().getDeliveryServices().removeIf(ds -> {
+				return findFirst(
+					snapshotEventsProcessor.getDeleteEvents().values(),
+					deletedDs -> deletedDs.getId().equals(ds.getId())
+				)
+				.isPresent();
+			});
 		}
 
 		getCertificatesPoller().restart();
@@ -285,9 +291,9 @@ public class ConfigHandler {
 
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity", "PMD.AvoidCatchingThrowable"})
-	private boolean loadEntireSnapshot(final JsonNode jo, final SnapshotEventsProcessor snapshotEventsProcessor ) throws
-			JsonUtilsException, ParseException, IOException {
-	    final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
+	private boolean loadEntireSnapshot(final JsonNode jo, final SnapshotEventsProcessor snapshotEventsProcessor )
+			throws JsonUtilsException, ParseException, IOException {
+		final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
 		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
 		final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
 		final CacheRegister cacheRegister = new CacheRegister();
@@ -305,9 +311,6 @@ public class ConfigHandler {
 
 		if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
 			deliveryServices.addAll(deliveryServiceMap.values());
-		}
-
-		if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
 			getCertificatesPublisher().setDeliveryServices(deliveryServices);
 		}
 
@@ -424,8 +427,8 @@ public class ConfigHandler {
 		});
 		// remove deleted caches from locations
 		// this works because 'loc.getCaches()' makes a copy
-		final Set<CacheLocation> exLocations = cacheRegister.getCacheLocations();
-		exLocations.forEach(loc->{
+		final Set<CacheLocation> existingLocations = cacheRegister.getCacheLocations();
+		existingLocations.forEach(loc->{
 			loc.getCaches().forEach(cacheEntry-> {
 				if (snap.getDeleteCacheEvents().contains(cacheEntry.getId())) {
 					LOGGER.info("Removed cache from location: "+cacheEntry.getId());
@@ -433,13 +436,14 @@ public class ConfigHandler {
 				}
 			});
 		});
-		cacheRegister.setConfiguredLocations(exLocations);
+		cacheRegister.setConfiguredLocations(existingLocations);
 		// scan remaining caches for ds link changes
-		final Iterator<String> cacheIter = existingCacheMap.keySet().iterator();
-		while (cacheIter.hasNext()) {
-			final String cacheName = cacheIter.next();
+		for (final String cacheName : existingCacheMap.keySet()) {
 			// If its in the modified list then replace the mappings in existing
-			if (snap.getMappingEvents().keySet().contains(cacheName)) {
+			if (!snap.getMappingEvents().keySet().contains(cacheName)) {
+					LOGGER.info("No changes for cache named: "+cacheName);
+					continue;
+			} else {
 				LOGGER.info("Found mapping change for cache: "+cacheName);
 				final Cache cache = existingCacheMap.get(cacheName);
 				final Cache newCache = snap.getMappingEvents().get(cacheName);
@@ -447,31 +451,25 @@ public class ConfigHandler {
 				for (final DeliveryServiceReference dsr : existingDsRefs ) {
 					final String dsId = dsr.getDeliveryServiceId();
 					DeliveryService theDs = cacheRegister.getDeliveryService(dsId);
-					if (theDs == null) {
+					if (theDs != null) {
+						final DeliveryServiceReference ndsr = newCache.getDeliveryService(dsId);
+						addNewStats(ndsr, theDs);
+						continue;
+					} else {
 						// This means the delivery service has been deleted, so we can only find it in the deleted list
 						theDs = snap.getDeleteEvents().get(dsId);
 						if (theDs == null) {
 							// this means there is a bug somewhere
 							// allow NullPointerException
-							LOGGER.error("parseCacheConfig: This DeliveryService has been deleted from the Cache " +
-									"Register, but it is not in the list of Delete events: "+dsId);
 							throw new ParseException("parseCacheConfig: This DeliveryService has been deleted from the" +
 									" Cache " +
-									"Register, but it is not in the list of Delete events: "+dsId);
+									"Register, but it is not in the list of Delete events: " + dsId);
 						}
 						statTracker.removeTracks(theDs, dsr.getAliases());
-					}
-					else
-					{
-						final DeliveryServiceReference ndsr = newCache.getDeliveryService(dsId);
-						addNewStats(ndsr,theDs);
 					}
 				}
 				cache.replaceDeliveryServices(newCache.getDeliveryServices());
 				cache.getDeliveryServices().forEach(dsr-> LOGGER.info("cache = "+cache.getId()+" DSR = "+dsr.getDeliveryServiceId()));
-			}
-			else {
-				LOGGER.info("No changes for cache named: "+cacheName);
 			}
 		}
 	}
@@ -822,14 +820,14 @@ public class ConfigHandler {
 		}
 
 		Collection<DeliveryService> deliveryServices = dsep.getCreationEvents().values();
-		if (getFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
+		if (findFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
 			getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
 			getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
 			AnonymousIp.getCurrentConfig().enabled = true;
 			LOGGER.debug("new Anonymous Blocking in use, scheduling service updaters and enabling feature");
 		} else {
 			deliveryServices = dsep.getUpdateEvents().values();
-			if (getFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
+			if (findFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
 				getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
 				getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
 				AnonymousIp.getCurrentConfig().enabled = true;
@@ -865,8 +863,8 @@ public class ConfigHandler {
 		);
 	}
 
-	private Optional<DeliveryService> getFirst(final Collection<DeliveryService> deliveryServices,
-	                                           final Predicate<DeliveryService> dsTester) {
+	private Optional<DeliveryService> findFirst(final Collection<DeliveryService> deliveryServices,
+	                                            final Predicate<DeliveryService> dsTester) {
 		return deliveryServices.stream()
 				.filter(ds -> dsTester.test(ds))
 				.findFirst();
@@ -886,11 +884,11 @@ public class ConfigHandler {
 		}
 
 		Collection<DeliveryService> deliveryServices = dsep.getCreationEvents().values();
-		if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
+		if (findFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
 			rgu.setDataBaseURL(url, interval);
 		} else {
 			deliveryServices = dsep.getUpdateEvents().values();
-			if (getFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
+			if (findFirst(deliveryServices, ds -> ds.isRegionalGeoEnabled()).isPresent()) {
 				rgu.setDataBaseURL(url, interval);
 			} else {
 				rgu.cancelServiceUpdater();

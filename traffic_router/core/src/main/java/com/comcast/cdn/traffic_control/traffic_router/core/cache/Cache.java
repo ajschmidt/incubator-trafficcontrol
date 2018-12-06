@@ -147,7 +147,7 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 
 	public void replaceDeliveryServices(final Collection<DeliveryServiceReference> newDeliveryServices){
 		this.deliveryServices.clear();
-		newDeliveryServices.forEach(dsr-> deliveryServices.put(dsr.getDeliveryServiceId(),dsr));
+		newDeliveryServices.forEach(dsr -> deliveryServices.put(dsr.getDeliveryServiceId(),dsr));
 	}
 
 	public boolean hasDeliveryService(final String deliveryServiceId) {
@@ -196,7 +196,7 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 
 		public DeliveryServiceReference(final String deliveryServiceId, final String fqdn,
 		                                final List<String> dsNames) throws ParseException {
-			this(deliveryServiceId,fqdn);
+			this(deliveryServiceId, fqdn);
 
 			if (dsNames != null) {
 				aliases = dsNames;
@@ -218,12 +218,12 @@ public class Cache implements Comparable<Cache>, Hashable<Cache> {
 			return aliases;
 		}
 
-		public void setAliases( final List<String> aliasesLst) {
-			if (aliasesLst == null) {
+		public void setAliases(final List<String> aliasesList) {
+			if (aliasesList == null) {
 				return;
 			}
 
-			aliases = aliasesLst;
+			aliases = aliasesList;
 		}
 
 		public String getHost() {

@@ -145,10 +145,9 @@ public class CertificateRegistry {
 				delPreviousDefault = DEFAULT_SSL_KEY.equals(alias);
 				final String hostname = previousData.get(alias).getHostname();
 				sslEndpoint.removeSslHostConfig(hostname);
-			    log.warn("Removed handshake data with hostname " + hostname);
+				log.warn("Removed handshake data with hostname " + hostname);
 			}
 		}
-
 		// store the result for the next import
 		previousData.clear();
 		for (final CertificateData certificateData : certificateDataList) {

@@ -73,14 +73,14 @@ public final class SignatureManager {
 	}
 
 	public void refreshKeyMap() {
-		initKeyMap(true);
+		updateKeyMap(false);
 	}
 
 	private void initKeyMap() {
-		initKeyMap(false);
+		updateKeyMap(true);
 	}
 
-	private void initKeyMap(final boolean suppressReload) {
+	private void updateKeyMap(final boolean reloadAll) {
 		synchronized(SignatureManager.class) {
 			final JsonNode config = cacheRegister.getConfig();
 
@@ -91,7 +91,7 @@ public final class SignatureManager {
 				setExpirationMultiplier(JsonUtils.optInt(config, "signaturemanager.expiration.multiplier", 5)); // signature validity is maxTTL * this
 				final ScheduledExecutorService me = Executors.newScheduledThreadPool(1);
 				final int maintenanceInterval = JsonUtils.optInt(config, "keystore.maintenance.interval", 300); // default 300 seconds, do we calculate based on the complimentary settings for key generation in TO?
-				me.scheduleWithFixedDelay(getKeyMaintenanceRunnable(cacheRegister, suppressReload), 0, maintenanceInterval,
+				me.scheduleWithFixedDelay(getKeyMaintenanceRunnable(cacheRegister, reloadAll), 0, maintenanceInterval,
 						TimeUnit.SECONDS);
 
 				if (keyMaintenanceExecutor != null) {
@@ -115,7 +115,7 @@ public final class SignatureManager {
 	}
 
 	@SuppressWarnings("PMD.CyclomaticComplexity")
-	private Runnable getKeyMaintenanceRunnable(final CacheRegister cacheRegister, final boolean suppressReload) {
+	private Runnable getKeyMaintenanceRunnable(final CacheRegister cacheRegister, final boolean reloadAll) {
 		return new Runnable() {
 			public void run() {
 				try {
@@ -172,7 +172,7 @@ public final class SignatureManager {
 							trafficRouterManager.trackEvent("newDnsSecKeysFound");
 							keyMap = newKeyMap;
 
-							if (!suppressReload) {
+							if (reloadAll) {
 								getZoneManager().rebuildZoneCache();
 							}
 						} // no need to overwrite the keymap if they're the same, so no else leg

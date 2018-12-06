@@ -29,22 +29,15 @@ public class CertificateChecker {
 
 	public String getDeliveryServiceType(final JsonNode deliveryServiceJson) {
 		final JsonNode matchsets = deliveryServiceJson.get("matchsets");
-
-		for (final JsonNode matchset : matchsets) {
-			if (matchset == null) {
-				continue;
-			}
-
-			final String deliveryServiceType = JsonUtils.optString(matchset, "protocol");
-			if (!deliveryServiceType.isEmpty()) {
-				return deliveryServiceType;
-			}
-		}
-		return null;
+		return getDeliveryServiceTypeFromJson(matchsets);
 	}
 
 	public String getDeliveryServiceType(final DeliveryService deliveryService) {
 		final JsonNode matchsets = deliveryService.getMatchsets();
+		return getDeliveryServiceTypeFromJson(matchsets);
+	}
+
+	private String getDeliveryServiceTypeFromJson(final JsonNode matchsets) {
 
 		for (final JsonNode matchset : matchsets) {
 			if (matchset == null) {
@@ -69,23 +62,6 @@ public class CertificateChecker {
 		}
 		return true;
 	}
-	public boolean certificatesAreValid(final List<CertificateData> certificateDataList, final JsonNode deliveryServicesJson) {
-
-		final Iterator<String> deliveryServiceIdIter = deliveryServicesJson.fieldNames();
-		boolean invalidConfig = false;
-
-		while (deliveryServiceIdIter.hasNext()) {
-			if (!deliveryServiceHasValidCertificates(certificateDataList, deliveryServicesJson, deliveryServiceIdIter.next())) {
-				invalidConfig = true; // individual DS errors are logged when deliveryServiceHasValidCertificates() is called
-			}
-		}
-
-		if (invalidConfig) {
-			return false;
-		}
-
-		return true;
-	}
 
 	public boolean hasCertificate(final List<CertificateData> certificateDataList, final String deliveryServiceId) {
 		return certificateDataList.stream()
@@ -102,7 +78,6 @@ public class CertificateChecker {
 				return true;
 		}
 
-		//final JsonNode domains = deliveryServiceJson.get("domains");
 		final JsonNode domains = deliveryService.getDomains();
 
 		if (domains == null) {
@@ -133,55 +108,6 @@ public class CertificateChecker {
 		}
 
 		return false;
-	}
-
-    @SuppressWarnings("PMD.CyclomaticComplexity")
-	private boolean deliveryServiceHasValidCertificates(final List<CertificateData> certificateDataList, final JsonNode deliveryServicesJson, final String deliveryServiceId) {
-		final JsonNode deliveryServiceJson = deliveryServicesJson.get(deliveryServiceId);
-		final JsonNode protocolJson = deliveryServiceJson.get("protocol");
-
-		if (!supportsHttps(deliveryServiceJson, protocolJson)) {
-			return true;
-		}
-
-		final JsonNode domains = deliveryServiceJson.get("domains");
-
-		if (domains == null) {
-			LOGGER.warn("Delivery-Service " + deliveryServiceId + " is not configured with any domains!");
-			return true;
-		}
-
-		if (domains.size() == 0) {
-			return true;
-		}
-
-		for (final JsonNode domain : domains) {
-			final String domainStr = domain.asText("").replaceAll("^\\*\\.", "");
-			if (domainStr == null || domainStr.isEmpty()) {
-				continue;
-			}
-
-			for (final CertificateData certificateData : certificateDataList) {
-				final String certificateDeliveryServiceId = certificateData.getDeliveryservice();
-				if ((deliveryServiceId == null) || deliveryServiceId.equals("")) {
-					LOGGER.error("Delivery Service name is blank for hostname '" +  certificateData.getHostname() + "', skipping.");
-				} else if ((certificateDeliveryServiceId != null) && (deliveryServiceId != null) && (certificateDeliveryServiceId.equals(deliveryServiceId))) {
-					LOGGER.debug("The Delivery Service " + deliveryServiceId + " has certificate data for https");
-					return true;
-				}
-			}
-			LOGGER.error("No certificate data for https " + deliveryServiceId + " domain " + domainStr);
-		}
-
-		return false;
-	}
-
-	private boolean supportsHttps(final JsonNode deliveryServiceJson, final JsonNode protocolJson) {
-		if (!"HTTP".equals(getDeliveryServiceType(deliveryServiceJson))) {
-			return false;
-		}
-
-		return JsonUtils.optBoolean(protocolJson, "acceptHttps");
 	}
 
 	private boolean supportsHttps(final DeliveryService deliveryService) {
