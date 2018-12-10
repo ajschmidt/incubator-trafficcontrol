@@ -126,12 +126,17 @@ public class ZoneManager extends Resolver {
 	public void processDsChanges(final SnapshotEventsProcessor snapshotEvents) {
 		final Map<String, DeliveryService> changeEvents = snapshotEvents.getChangeEvents();
 		final Map<String, DeliveryService> deleteEvents = snapshotEvents.getDeleteEvents();
+		final Map<String, Cache> mappingEvents = snapshotEvents.getMappingEvents();
 		final Set<String> dnsRoutingNames = getDnsRoutingNames();
 
 		changeEvents.forEach((dsid, ds) -> {
 			if (!dnsRoutingNames.contains(ds.getRoutingName())) {
 				dnsRoutingNames.add(ds.getRoutingName());
 			}
+		});
+
+		mappingEvents.forEach((xmlid, cache) -> {
+
 		});
 
 		// If a DS name has been changed the old name will show up in the deleteEvents

@@ -1,5 +1,4 @@
 {
-  "version": "1.4",
   "contentServers": {
     "edge-cache-000": {
       "type": "EDGE",

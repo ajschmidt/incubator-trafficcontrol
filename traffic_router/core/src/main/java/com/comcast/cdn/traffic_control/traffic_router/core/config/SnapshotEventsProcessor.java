@@ -89,11 +89,12 @@ public class SnapshotEventsProcessor {
 		if (snapDb == null) {
 			return false;
 		}
-		return snapDb.has(ConfigHandler.versionKey);
+		final JsonNode config = JsonUtils.getJsonNode(snapDb,ConfigHandler.configKey);
+		return (config.has(ConfigHandler.ds_snapshotsKey) && config.get(ConfigHandler.ds_snapshotsKey).textValue().equals("true"));
 	}
 
 	private boolean hasDiffsForcingReload(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {
-		if (!JsonUtils.equalSubtrees(newSnapDb, existingConfig,ConfigHandler.configKey)) {
+		if (!JsonUtils.equalSubtreesExcept(newSnapDb, existingConfig,ConfigHandler.configKey,ConfigHandler.ds_snapshotsKey)) {
 			LOGGER.info("Config diff found");
 			return true;
 		}

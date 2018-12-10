@@ -1,5 +1,4 @@
 {
-  "version": 1.4,
   "contentServers": {
 	"edge-cache-000": {
 	  "type": "EDGE",
@@ -698,8 +697,6 @@
   },
   "deliveryServices": {
 	"dns-test": {
-	  "anyModified": "2018-11-09T02:16:39.283473Z",
-	  "modified": "1465088800",
 	  "sslEnabled": "false",
 	  "bypassDestination": {
 		"DNS": {
@@ -747,8 +744,6 @@
 	},
 	"https-only-test": {
 	  "sslEnabled": "true",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "false",
 		"acceptHttps": "true",
@@ -798,8 +793,6 @@
 	},
 	"steering-test-1": {
 	  "sslEnabled": "false",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -872,8 +865,6 @@
 	},
 	"steering-target-2": {
 	  "sslEnabled": "false",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -929,8 +920,6 @@
 	},
 	"steering-test-2": {
 	  "sslEnabled": "false",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -984,8 +973,6 @@
 	},
 	"federation-test": {
 	  "sslEnabled": "false",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -1053,8 +1040,6 @@
 	},
 	"steering-target-1": {
 	  "sslEnabled": "false",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -1118,8 +1103,6 @@
 	},
 	"steering-target-4": {
 	  "sslEnabled": "false",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -1175,8 +1158,6 @@
 	},
 	"steering-target-3": {
 	  "sslEnabled": "false",
-	  "anyModified": "2018-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -1237,8 +1218,6 @@
 	},
 	"https-nocert": {
 	  "sslEnabled": "true",
-	  "anyModified": "2018-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "true",
@@ -1288,8 +1267,6 @@
 	},
 	"https-additional": {
 	  "sslEnabled": "true",
-	  "anyModified": "2018-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "false",
 		"acceptHttps": "true",
@@ -1339,8 +1316,6 @@
 	},
 	"http-and-https-test": {
 	  "sslEnabled": "true",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "true",
@@ -1390,8 +1365,6 @@
 	},
 	"http-to-https-test": {
 	  "sslEnabled": "true",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "true",
@@ -1441,8 +1414,6 @@
 	},
 	"http-only-test": {
 	  "sslEnabled": "true",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "false",
@@ -1492,8 +1463,6 @@
 	},
 	"https-dns-test": {
 	  "sslEnabled": "true",
-	  "anyModified": "2008-11-09T02:16:39.283473Z",
-	  "modified": "1000000000",
 	  "protocol": {
 		"acceptHttp": "true",
 		"acceptHttps": "true",
@@ -1585,6 +1554,7 @@
 	}
   },
   "config": {
+	"deliveryservice.snapshots": "true",
 	"certificate.api.url": "http://${toHostname}/api/1.3/cdns/name/${cdnName}/sslkeys.json",
 	"federationmapping.polling.url": "http://${toHostname}/internal/api/1.3/federations.json",
 	"federationmapping.polling.interval": "600000",

@@ -75,12 +75,10 @@ public class ConfigHandler {
 
 	private static long lastSnapshotTimestamp = 0;
 	private static final Object configSync = new Object();
+	final static String ds_snapshotsKey = "deliveryservice.snapshots";
 	final static String contentServersKey = "contentServers";
-	final static String versionKey = "version";
 	final static String deliveryServicesKey = "deliveryServices";
-	final static String serverModTsKey = "serversModified";
 	final static String configKey = "config";
-	final static String deliveryServicesModKey = "deliveryServicesModified";
 	final static String DS_URL = "DS_URL";
 	final static String NOT_DS_URL = "NOT_DS_URL";
 
@@ -610,6 +608,11 @@ public class ConfigHandler {
 			try {
 				final JsonNode matchsets = deliveryService.getMatchsets();
 				for (final JsonNode matchset : matchsets) {
+					if (!matchset.has("protocol")) {
+						LOGGER.error("Matchset: "+matchset.toString()+" in delivery service: "+deliveryServiceId+" " +
+								"was malformed. Proceeding to the next matchset.");
+						continue;
+					}
 					final String protocol = JsonUtils.getString(matchset, "protocol");
 					final DeliveryServiceMatcher deliveryServiceMatcher = new DeliveryServiceMatcher(deliveryService);
 					if ("HTTP".equals(protocol)) {
