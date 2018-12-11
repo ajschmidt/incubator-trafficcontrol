@@ -279,41 +279,42 @@ public class ConfigHandlerTest {
 		when(snapshotEventsProcessor.getUpdateEvents()).thenReturn(empty);
 		Whitebox.invokeMethod(handler, "parseRegionalGeoConfig", config, snapshotEventsProcessor);
 		verify(rgu, times(2)).setDataBaseURL(eq(url),eq(interval ));
-	};
+	}
 
     @Test
     public void testParseLocalizationMethods() throws Exception {
-        LocalizationMethod[] allMethods = new LocalizationMethod[] {
-                LocalizationMethod.CZ,
-                LocalizationMethod.DEEP_CZ,
-                LocalizationMethod.GEO,
-        };
-        Set<LocalizationMethod> expected = new HashSet<>();
-        expected.addAll(Arrays.asList(allMethods));
+	    LocalizationMethod[] allMethods = new LocalizationMethod[]{
+			    LocalizationMethod.CZ,
+			    LocalizationMethod.DEEP_CZ,
+			    LocalizationMethod.GEO,
+	    };
+	    Set<LocalizationMethod> expected = new HashSet<>();
+	    expected.addAll(Arrays.asList(allMethods));
 
-        ObjectMapper mapper = new ObjectMapper();
+	    ObjectMapper mapper = new ObjectMapper();
 
-        String allMethodsString = "{\"localizationMethods\": [\"CZ\",\"DEEP_CZ\",\"GEO\"]}";
-        JsonNode allMethodsJson = mapper.readTree(allMethodsString);
-        Set<LocalizationMethod> actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", allMethodsJson);
-        assertThat(actual, equalTo(expected));
+	    String allMethodsString = "{\"localizationMethods\": [\"CZ\",\"DEEP_CZ\",\"GEO\"]}";
+	    JsonNode allMethodsJson = mapper.readTree(allMethodsString);
+	    Set<LocalizationMethod> actual = Whitebox
+			    .invokeMethod(handler, "parseLocalizationMethods", "foo", allMethodsJson);
+	    assertThat(actual, equalTo(expected));
 
-        String noMethodsString = "{}";
-        JsonNode noMethodsJson = mapper.readTree(noMethodsString);
-        actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", noMethodsJson);
-        assertThat(actual, equalTo(expected));
+	    String noMethodsString = "{}";
+	    JsonNode noMethodsJson = mapper.readTree(noMethodsString);
+	    actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", noMethodsJson);
+	    assertThat(actual, equalTo(expected));
 
-        String nullMethodsString = "{\"localizationMethods\": null}";
-        JsonNode nullMethodsJson = mapper.readTree(nullMethodsString);
-        actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", nullMethodsJson);
-        assertThat(actual, equalTo(expected));
+	    String nullMethodsString = "{\"localizationMethods\": null}";
+	    JsonNode nullMethodsJson = mapper.readTree(nullMethodsString);
+	    actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", nullMethodsJson);
+	    assertThat(actual, equalTo(expected));
 
-        String CZMethodsString = "{\"localizationMethods\": [\"CZ\"]}";
-        JsonNode CZMethodsJson = mapper.readTree(CZMethodsString);
-        expected.clear();
-        expected.add(LocalizationMethod.CZ);
-        actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", CZMethodsJson);
-        assertThat(actual, equalTo(expected));
+	    String CZMethodsString = "{\"localizationMethods\": [\"CZ\"]}";
+	    JsonNode CZMethodsJson = mapper.readTree(CZMethodsString);
+	    expected.clear();
+	    expected.add(LocalizationMethod.CZ);
+	    actual = Whitebox.invokeMethod(handler, "parseLocalizationMethods", "foo", CZMethodsJson);
+	    assertThat(actual, equalTo(expected));
     }
 
     @Test

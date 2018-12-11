@@ -166,6 +166,6 @@ public class TrafficRouterManager implements ApplicationListener<ContextRefreshe
 	}
 
 	public void updateZones(final SnapshotEventsProcessor changeEvents) {
-			getTrafficRouter().getZoneManager().processDsChanges(changeEvents);
+		getTrafficRouter().getZoneManager().processDsChanges(changeEvents);
 	}
 }

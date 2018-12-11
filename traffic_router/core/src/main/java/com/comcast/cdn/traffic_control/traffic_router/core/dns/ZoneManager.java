@@ -943,7 +943,8 @@ public class ZoneManager extends Resolver {
 		final List<Record> records = new ArrayList<Record>();
 		records.add(staticZone.getSOA());
 
-		@SuppressWarnings("unchecked") final Iterator<Record> ns = staticZone.getNS().rrs();
+		@SuppressWarnings("unchecked")
+		final Iterator<Record> ns = staticZone.getNS().rrs();
 
 		while (ns.hasNext()) {
 			records.add(ns.next());

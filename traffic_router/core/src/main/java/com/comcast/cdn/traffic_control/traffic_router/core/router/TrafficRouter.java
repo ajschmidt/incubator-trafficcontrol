@@ -98,14 +98,15 @@ public class TrafficRouter {
 
 	private final Map<String, Geolocation> defaultGeolocationsOverride = new HashMap<>();
 
-	public TrafficRouter(final CacheRegister cr, 
-		final GeolocationService geolocationService,
-		final GeolocationService geolocationService6,
-		final AnonymousIpDatabaseService anonymousIpService,
-		final StatTracker statTracker,
-		final TrafficOpsUtils trafficOpsUtils,
-		final FederationRegistry federationRegistry,
-		final TrafficRouterManager trafficRouterManager) throws IOException {
+	public TrafficRouter(
+			final CacheRegister cr,
+			final GeolocationService geolocationService,
+			final GeolocationService geolocationService6,
+			final AnonymousIpDatabaseService anonymousIpService,
+			final StatTracker statTracker,
+			final TrafficOpsUtils trafficOpsUtils,
+			final FederationRegistry federationRegistry,
+			final TrafficRouterManager trafficRouterManager) throws IOException {
 		this.cacheRegister = cr;
 		this.geolocationService = geolocationService;
 		this.geolocationService6 = geolocationService6;

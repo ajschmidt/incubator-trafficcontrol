@@ -17,7 +17,6 @@ package com.comcast.cdn.traffic_control.traffic_router.core.config;
 import com.comcast.cdn.traffic_control.traffic_router.core.cache.Cache;
 import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
 import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtils;
-import com.comcast.cdn.traffic_control.traffic_router.core.util.JsonUtilsException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.commons.io.IOUtils;
@@ -121,11 +120,11 @@ public class SnapshotEventsProcessorTest {
 
 	@Test
 	public void parseDsAliases() throws Exception {
-		final JsonNode config = JsonUtils.getJsonNode(baselineJo, ConfigHandler.configKey);
-		final JsonNode contentServers = JsonUtils.getJsonNode(baselineJo, ConfigHandler.contentServersKey);
+		final JsonNode config = JsonUtils.getJsonNode(baselineJo, ConfigHandler.CONFIG_KEY);
+		final JsonNode contentServers = JsonUtils.getJsonNode(baselineJo, ConfigHandler.CONTENT_SERVERS_KEY);
 		final JsonNode cjo = contentServers.get("edge-cache-000");
-		if (cjo.has(ConfigHandler.deliveryServicesKey)) {
-			final JsonNode dso = cjo.get(ConfigHandler.deliveryServicesKey).get("https-only-test");
+		if (cjo.has(ConfigHandler.DELIVERY_SERVICES_KEY)) {
+			final JsonNode dso = cjo.get(ConfigHandler.DELIVERY_SERVICES_KEY).get("https-only-test");
 			final SnapshotEventsProcessor sep = mock(SnapshotEventsProcessor.class);
 			when(sep.getExistingConfig()).thenReturn(config);
 			List<String> aliases = Whitebox.invokeMethod(sep, "parseDsAliases", dso);

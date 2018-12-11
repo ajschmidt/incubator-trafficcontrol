@@ -75,10 +75,10 @@ public class ConfigHandler {
 
 	private static long lastSnapshotTimestamp = 0;
 	private static final Object configSync = new Object();
-	final static String ds_snapshotsKey = "deliveryservice.snapshots";
-	final static String contentServersKey = "contentServers";
-	final static String deliveryServicesKey = "deliveryServices";
-	final static String configKey = "config";
+	final static String DS_SNAPSHOTS_KEY = "deliveryservice.snapshots";
+	final static String CONTENT_SERVERS_KEY = "contentServers";
+	final static String DELIVERY_SERVICES_KEY = "deliveryServices";
+	final static String CONFIG_KEY = "config";
 	final static String DS_URL = "DS_URL";
 	final static String NOT_DS_URL = "NOT_DS_URL";
 
@@ -163,7 +163,7 @@ public class ConfigHandler {
 			// Check to see if this is a new Snapshot
 			final long sts = getSnapshotTimestamp(stats);
 			date = new Date(sts * 1000L);
-			if (sts < getLastSnapshotTimestamp()) {
+			if (sts <= getLastSnapshotTimestamp()) {
 				cancelled.set(false);
 				isProcessing.set(false);
 				publishStatusQueue.clear();
@@ -208,7 +208,7 @@ public class ConfigHandler {
 		} else {
 			cacheRegister = new CacheRegister();
 		}
-		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
+		final JsonNode config = JsonUtils.getJsonNode(jo, CONFIG_KEY);
 		parseRegionalGeoConfig(config, snapshotEventsProcessor);
 		parseAnonymousIpConfig(config, snapshotEventsProcessor);
 		updateCertsPublisher(snapshotEventsProcessor);
@@ -292,7 +292,7 @@ public class ConfigHandler {
 	private boolean loadEntireSnapshot(final JsonNode jo, final SnapshotEventsProcessor snapshotEventsProcessor )
 			throws JsonUtilsException, ParseException, IOException {
 		final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
-		final JsonNode config = JsonUtils.getJsonNode(jo, configKey);
+		final JsonNode config = JsonUtils.getJsonNode(jo, CONFIG_KEY);
 		final JsonNode stats = JsonUtils.getJsonNode(jo, "stats");
 		final CacheRegister cacheRegister = new CacheRegister();
 		parseGeolocationConfig(config);
@@ -323,7 +323,7 @@ public class ConfigHandler {
 
 		parseDeliveryServiceMatchSets(deliveryServiceMap, cacheRegister);
 		parseLocationConfig(JsonUtils.getJsonNode(jo, "edgeLocations"), cacheRegister);
-		parseCacheConfig(JsonUtils.getJsonNode(jo, ConfigHandler.contentServersKey), cacheRegister);
+		parseCacheConfig(JsonUtils.getJsonNode(jo, ConfigHandler.CONTENT_SERVERS_KEY), cacheRegister);
 		parseMonitorConfig(JsonUtils.getJsonNode(jo, "monitors"));
 		federationsWatcher.configure(config);
 		steeringWatcher.configure(config);
@@ -410,7 +410,6 @@ public class ConfigHandler {
 	 * @param snap the {@link SnapshotEventsProcessor}
 	 * @param cacheRegister the {@link CacheRegister}
 	 */
-	@SuppressWarnings({"PMD.AvoidDeeplyNestedIfStmts" })
 	private void parseCacheConfig(final SnapshotEventsProcessor snap,
 	                              final CacheRegister cacheRegister) throws
 			ParseException {
@@ -439,36 +438,35 @@ public class ConfigHandler {
 		for (final String cacheName : existingCacheMap.keySet()) {
 			// If its in the modified list then replace the mappings in existing
 			if (!snap.getMappingEvents().keySet().contains(cacheName)) {
-					LOGGER.info("No changes for cache named: "+cacheName);
-					continue;
-			} else {
-				LOGGER.info("Found mapping change for cache: "+cacheName);
-				final Cache cache = existingCacheMap.get(cacheName);
-				final Cache newCache = snap.getMappingEvents().get(cacheName);
-				final Collection<DeliveryServiceReference> existingDsRefs = cache.getDeliveryServices();
-				for (final DeliveryServiceReference dsr : existingDsRefs ) {
-					final String dsId = dsr.getDeliveryServiceId();
-					DeliveryService theDs = cacheRegister.getDeliveryService(dsId);
-					if (theDs != null) {
-						final DeliveryServiceReference ndsr = newCache.getDeliveryService(dsId);
-						addNewStats(ndsr, theDs);
-						continue;
-					} else {
-						// This means the delivery service has been deleted, so we can only find it in the deleted list
-						theDs = snap.getDeleteEvents().get(dsId);
-						if (theDs == null) {
-							// this means there is a bug somewhere
-							// allow NullPointerException
-							throw new ParseException("parseCacheConfig: This DeliveryService has been deleted from the" +
-									" Cache " +
-									"Register, but it is not in the list of Delete events: " + dsId);
-						}
-						statTracker.removeTracks(theDs, dsr.getAliases());
-					}
-				}
-				cache.replaceDeliveryServices(newCache.getDeliveryServices());
-				cache.getDeliveryServices().forEach(dsr-> LOGGER.info("cache = "+cache.getId()+" DSR = "+dsr.getDeliveryServiceId()));
+				LOGGER.info("No changes for cache named: " + cacheName);
+				continue;
 			}
+			LOGGER.info("Found mapping change for cache: " + cacheName);
+			final Cache cache = existingCacheMap.get(cacheName);
+			final Cache newCache = snap.getMappingEvents().get(cacheName);
+			final Collection<DeliveryServiceReference> existingDsRefs = cache.getDeliveryServices();
+			for (final DeliveryServiceReference dsr : existingDsRefs) {
+				final String dsId = dsr.getDeliveryServiceId();
+				DeliveryService theDs = cacheRegister.getDeliveryService(dsId);
+				if (theDs != null) {
+					final DeliveryServiceReference ndsr = newCache.getDeliveryService(dsId);
+					addNewStats(ndsr, theDs);
+					continue;
+				}
+				// This means the delivery service has been deleted, so we can only find it in the deleted list
+				theDs = snap.getDeleteEvents().get(dsId);
+				if (theDs == null) {
+					// this means there is a bug somewhere
+					// allow NullPointerException
+					throw new ParseException("parseCacheConfig: This DeliveryService has been deleted from the" +
+							" Cache " +
+							"Register, but it is not in the list of Delete events: " + dsId);
+				}
+				statTracker.removeTracks(theDs, dsr.getAliases());
+			}
+			cache.replaceDeliveryServices(newCache.getDeliveryServices());
+			cache.getDeliveryServices()
+					.forEach(dsr -> LOGGER.info("cache = " + cache.getId() + " DSR = " + dsr.getDeliveryServiceId()));
 		}
 	}
 
@@ -522,9 +520,9 @@ public class ConfigHandler {
 					LOGGER.warn(e + " : " + ip);
 				}
 
-				if (jo.has(deliveryServicesKey)) {
+				if (jo.has(DELIVERY_SERVICES_KEY)) {
 					final List<DeliveryServiceReference> references = new ArrayList<Cache.DeliveryServiceReference>();
-					final JsonNode dsJos = jo.get(deliveryServicesKey);
+					final JsonNode dsJos = jo.get(DELIVERY_SERVICES_KEY);
 
 					final Iterator<String> dsIter = dsJos.fieldNames();
 					while (dsIter.hasNext()) {
@@ -609,7 +607,8 @@ public class ConfigHandler {
 				final JsonNode matchsets = deliveryService.getMatchsets();
 				for (final JsonNode matchset : matchsets) {
 					if (!matchset.has("protocol")) {
-						LOGGER.error("Matchset: "+matchset.toString()+" in delivery service: "+deliveryServiceId+" " +
+						LOGGER.error("Matchset: " + matchset
+								.toString() + " in delivery service: " + deliveryServiceId + " " +
 								"was malformed. Proceeding to the next matchset.");
 						continue;
 					}
@@ -662,13 +661,11 @@ public class ConfigHandler {
 			throw jues.get(0);
 		}
 		// remove delivery services that have been deleted in the snapshot
-		if (!snap.getDeleteEvents().isEmpty()) {
-			snap.getDeleteEvents().forEach((deliveryServiceId, deliveryService) -> {
-				httpServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
-				dnsServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
-				masterDsMap.remove(deliveryServiceId);
-			});
-		}
+		snap.getDeleteEvents().forEach((deliveryServiceId, deliveryService) -> {
+			httpServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
+			dnsServiceMatchers.removeIf(dsm -> dsm.getDeliveryService().getId().equals(deliveryServiceId));
+			masterDsMap.remove(deliveryServiceId);
+		});
 		cacheRegister.setDeliveryServiceMap(masterDsMap);
 		cacheRegister.setDnsDeliveryServiceMatchers(dnsServiceMatchers);
 		cacheRegister.setHttpDeliveryServiceMatchers(httpServiceMatchers);
@@ -775,8 +772,8 @@ public class ConfigHandler {
 		}
 
 		getGeolocationDatabaseUpdater().setDataBaseURL(
-				JsonUtils.getString(config, pollingUrlKey),
-				JsonUtils.optLong(config, "geolocation.polling.interval")
+			JsonUtils.getString(config, pollingUrlKey),
+			JsonUtils.optLong(config, "geolocation.polling.interval")
 		);
 
 		if (config.has(NEUSTAR_POLLING_URL)) {
@@ -835,12 +832,10 @@ public class ConfigHandler {
 				getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
 				AnonymousIp.getCurrentConfig().enabled = true;
 				LOGGER.debug("added Anonymous Blocking in use, scheduling service updaters and enabling feature");
-			} else {
+			} else if (!AnonymousIp.getCurrentConfig().enabled) {
 				LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
 				getAnonymousIpConfigUpdater().cancelServiceUpdater();
 				getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
-				AnonymousIp.getCurrentConfig().enabled = false;
-
 			}
 		}
 	}
@@ -861,8 +856,8 @@ public class ConfigHandler {
 
 	private void parseDeepCoverageZoneNetworkConfig(final JsonNode config) {
 		getDeepNetworkUpdater().setDataBaseURL(
-				JsonUtils.optString(config, "deepcoveragezone.polling.url", null),
-				JsonUtils.optLong(config, "deepcoveragezone.polling.interval")
+			JsonUtils.optString(config, "deepcoveragezone.polling.url", null),
+			JsonUtils.optLong(config, "deepcoveragezone.polling.interval")
 		);
 	}
 

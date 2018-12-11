@@ -28,7 +28,6 @@ import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-//import java.time.Instant;
 
 public class SnapshotEventsProcessor {
 	private static final Logger LOGGER = Logger.getLogger(SnapshotEventsProcessor.class);
@@ -89,12 +88,12 @@ public class SnapshotEventsProcessor {
 		if (snapDb == null) {
 			return false;
 		}
-		final JsonNode config = JsonUtils.getJsonNode(snapDb,ConfigHandler.configKey);
-		return (config.has(ConfigHandler.ds_snapshotsKey) && config.get(ConfigHandler.ds_snapshotsKey).textValue().equals("true"));
+		final JsonNode config = JsonUtils.getJsonNode(snapDb,ConfigHandler.CONFIG_KEY);
+		return (config.has(ConfigHandler.DS_SNAPSHOTS_KEY) && config.get(ConfigHandler.DS_SNAPSHOTS_KEY).textValue().equals("true"));
 	}
 
 	private boolean hasDiffsForcingReload(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {
-		if (!JsonUtils.equalSubtreesExcept(newSnapDb, existingConfig,ConfigHandler.configKey,ConfigHandler.ds_snapshotsKey)) {
+		if (!JsonUtils.equalSubtreesExcept(newSnapDb, existingConfig,ConfigHandler.CONFIG_KEY,ConfigHandler.DS_SNAPSHOTS_KEY)) {
 			LOGGER.info("Config diff found");
 			return true;
 		}
@@ -114,10 +113,10 @@ public class SnapshotEventsProcessor {
 			LOGGER.info("EdgeLocation diff found");
 			return true;
 		}
-		return !compareContentServers(newSnapDb,existingConfig);
+		return !contentServersEqual(newSnapDb,existingConfig);
 	}
 
-	private boolean compareContentServers(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {
+	private boolean contentServersEqual(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {
 		final JsonNode cs1 = JsonUtils.getJsonNode(newSnapDb, "contentServers");
 		final JsonNode cs2 = JsonUtils.getJsonNode(existingConfig, "contentServers");
 
@@ -147,17 +146,17 @@ public class SnapshotEventsProcessor {
 
 	private void diffCacheMappings(final JsonNode newSnapDb, final JsonNode existingDb) throws JsonUtilsException,
 			ParseException {
-		setExistingConfig(JsonUtils.getJsonNode(existingDb, ConfigHandler.configKey));
-		final JsonNode newServers = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.contentServersKey);
+		setExistingConfig(JsonUtils.getJsonNode(existingDb, ConfigHandler.CONFIG_KEY));
+		final JsonNode newServers = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.CONTENT_SERVERS_KEY);
 		final Iterator<String> newServersIter = newServers.fieldNames();
 		while (newServersIter.hasNext()) {
 			final String cacheId = newServersIter.next();
 			final JsonNode newCacheJson = newServers.get(cacheId);
-			if (!newCacheJson.has(ConfigHandler.deliveryServicesKey)) {
+			if (!newCacheJson.has(ConfigHandler.DELIVERY_SERVICES_KEY)) {
 				continue;
 			}
 			final Iterator<String> dsrKeys =
-					JsonUtils.getJsonNode(newCacheJson, ConfigHandler.deliveryServicesKey).fieldNames();
+					JsonUtils.getJsonNode(newCacheJson, ConfigHandler.DELIVERY_SERVICES_KEY).fieldNames();
 			while (dsrKeys.hasNext()) {
 				final String dsrId = dsrKeys.next();
 				if (serverModEvents.contains(dsrId)) {
@@ -169,7 +168,7 @@ public class SnapshotEventsProcessor {
 			}
 		}
 
-		parseDeleteCacheEvents(JsonUtils.getJsonNode(existingDb, ConfigHandler.contentServersKey), newServers);
+		parseDeleteCacheEvents(JsonUtils.getJsonNode(existingDb, ConfigHandler.CONTENT_SERVERS_KEY), newServers);
 	}
 
 	private boolean dssLinkChangeDetected(final String cid, final JsonNode newCacheJson, final JsonNode existingDb) throws
@@ -178,17 +177,17 @@ public class SnapshotEventsProcessor {
 		{
 			return true;
 		}
-		final JsonNode existingServers = JsonUtils.getJsonNode(existingDb,ConfigHandler.contentServersKey);
+		final JsonNode existingServers = JsonUtils.getJsonNode(existingDb,ConfigHandler.CONTENT_SERVERS_KEY);
 		if (!existingServers.has(cid)) {
-		    return true;
-		}
-		final JsonNode existingCache = JsonUtils.getJsonNode(existingServers,cid);
-		if (newCacheJson.has(ConfigHandler.deliveryServicesKey) && !existingCache.has(ConfigHandler.deliveryServicesKey)) {
 			return true;
 		}
-		if (newCacheJson.has(ConfigHandler.deliveryServicesKey)) {
-			final JsonNode newDsLinks = JsonUtils.getJsonNode(newCacheJson, ConfigHandler.deliveryServicesKey);
-			return !newDsLinks.equals(JsonUtils.getJsonNode(existingCache, ConfigHandler.deliveryServicesKey));
+		final JsonNode existingCache = JsonUtils.getJsonNode(existingServers,cid);
+		if (newCacheJson.has(ConfigHandler.DELIVERY_SERVICES_KEY) && !existingCache.has(ConfigHandler.DELIVERY_SERVICES_KEY)) {
+			return true;
+		}
+		if (newCacheJson.has(ConfigHandler.DELIVERY_SERVICES_KEY)) {
+			final JsonNode newDsLinks = JsonUtils.getJsonNode(newCacheJson, ConfigHandler.DELIVERY_SERVICES_KEY);
+			return !newDsLinks.equals(JsonUtils.getJsonNode(existingCache, ConfigHandler.DELIVERY_SERVICES_KEY));
 		} else {
 			return true;
 		}
@@ -217,8 +216,8 @@ public class SnapshotEventsProcessor {
 
 	private List<DeliveryServiceReference> parseDsRefs(final JsonNode cacheJson) throws JsonUtilsException, ParseException{
 		final List<DeliveryServiceReference> dsRefs = new ArrayList<>();
-		if (cacheJson.has(ConfigHandler.deliveryServicesKey)) {
-			final JsonNode dsRefsJson = JsonUtils.getJsonNode(cacheJson, ConfigHandler.deliveryServicesKey);
+		if (cacheJson.has(ConfigHandler.DELIVERY_SERVICES_KEY)) {
+			final JsonNode dsRefsJson = JsonUtils.getJsonNode(cacheJson, ConfigHandler.DELIVERY_SERVICES_KEY);
 			final Iterator<String> dsrfs = dsRefsJson.fieldNames();
 			while (dsrfs.hasNext()) {
 				final String dsid = dsrfs.next();
@@ -271,12 +270,12 @@ public class SnapshotEventsProcessor {
 	private void diffDeliveryServices(final JsonNode newSnapDb, final JsonNode existingDb) throws
 			JsonUtilsException {
 		JsonNode compDeliveryServices = null;
-		final JsonNode newDeliveryServices = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.deliveryServicesKey);
+		final JsonNode newDeliveryServices = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.DELIVERY_SERVICES_KEY);
 		final List<String> existingIds = new ArrayList<>();
 
 		// find delivery services that have been changed or deleted in the new snapshot
 		if (existingDb != null) {
-			compDeliveryServices = JsonUtils.getJsonNode(existingDb, ConfigHandler.deliveryServicesKey);
+			compDeliveryServices = JsonUtils.getJsonNode(existingDb, ConfigHandler.DELIVERY_SERVICES_KEY);
 
 			final Iterator<String> compIter = compDeliveryServices.fieldNames();
 			while (compIter.hasNext()) {
@@ -286,10 +285,8 @@ public class SnapshotEventsProcessor {
 
 				final JsonNode newService = newDeliveryServices.get(deliveryServiceId);
 
-				if (newService != null) {
-					if (isUpdated(newService, compDeliveryService)) {
-						addEvent(updateEvents, newService, deliveryServiceId);
-					}
+				if (newService != null && isUpdated(newService, compDeliveryService)) {
+					addEvent(updateEvents, newService, deliveryServiceId);
 				} else {
 					LOGGER.info(("deleted Delivery Service = "+deliveryServiceId));
 					addEvent(deleteEvents, compDeliveryService, deliveryServiceId);

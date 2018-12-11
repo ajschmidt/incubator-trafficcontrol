@@ -25,7 +25,6 @@ import com.comcast.cdn.traffic_control.traffic_router.core.ds.DeliveryService;
 import com.comcast.cdn.traffic_control.traffic_router.core.router.TrafficRouterManager;
 import com.comcast.cdn.traffic_control.traffic_router.shared.CertificateData;
 import com.comcast.cdn.traffic_control.traffic_router.shared.DeliveryServiceCertificatesMBean;
-//import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.apache.log4j.Logger;
 

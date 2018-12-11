@@ -145,7 +145,9 @@ public class JsonUtils {
     }
 
     @SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
-            public static boolean equalSubtreesExcept(final JsonNode root1, final JsonNode root2, final String key,
+    public static boolean equalSubtreesExcept(final JsonNode root1,
+                                              final JsonNode root2,
+                                              final String key,
                                               final String exKey) throws JsonUtilsException {
         if (root1 == null || root2 == null) {
             throwException(key);
@@ -153,10 +155,10 @@ public class JsonUtils {
         final JsonNode sub1 = root1.get(key);
         final JsonNode sub2 = root2.get(key);
 
-        if ((sub1==null && sub2 !=null) || (sub1!=null && sub2==null)) {
+        if ((sub1 == null && sub2 != null) || (sub1 != null && sub2 == null)) {
             return false;
         }
-        if (sub1==null) {
+        if (sub1 == null) {
             return true;
         }
         Iterator<String> fields = sub1.fieldNames();

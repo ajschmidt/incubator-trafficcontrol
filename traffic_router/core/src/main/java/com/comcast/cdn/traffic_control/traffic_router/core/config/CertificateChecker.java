@@ -54,13 +54,14 @@ public class CertificateChecker {
 
 	public boolean certificatesAreValid(final List<CertificateData> certificateDataList, final List<DeliveryService> deliveryServices) {
 
+		boolean validConfig = true;
 		final Iterator<DeliveryService> deliveryServiceIdIter = deliveryServices.iterator();
 		while (deliveryServiceIdIter.hasNext()) {
 			if (!deliveryServiceHasValidCertificates(certificateDataList, deliveryServiceIdIter.next())) {
-				return false;
+				validConfig = false; // individual DS errors are logged in deliveryServiceHasValidCertificates
 			}
 		}
-		return true;
+		return validConfig;
 	}
 
 	public boolean hasCertificate(final List<CertificateData> certificateDataList, final String deliveryServiceId) {
@@ -75,7 +76,7 @@ public class CertificateChecker {
 		final String deliveryServiceId = deliveryService.getId();
 
 		if (!supportsHttps(deliveryService)) {
-				return true;
+			return true;
 		}
 
 		final JsonNode domains = deliveryService.getDomains();
