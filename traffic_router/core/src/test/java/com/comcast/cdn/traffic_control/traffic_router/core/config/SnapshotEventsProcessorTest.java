@@ -78,7 +78,8 @@ public class SnapshotEventsProcessorTest {
 	@Test
 	public void mineEventsFromDBDiffsNoChanges() throws Exception {
 		SnapshotEventsProcessor snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, null);
-		assertThat("LoadAll should be true because the snapshot does not have a version attribute.", snapEvents.shouldLoadAll());
+		assertThat("LoadAll should be true because the snapshot does not have a snapshot config parameter.",
+				snapEvents.shouldLoadAll());
 		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
 		snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, baselineJo);
 		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);

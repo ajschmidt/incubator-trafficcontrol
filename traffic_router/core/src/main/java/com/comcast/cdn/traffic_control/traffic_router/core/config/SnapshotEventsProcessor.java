@@ -89,7 +89,8 @@ public class SnapshotEventsProcessor {
 			return false;
 		}
 		final JsonNode config = JsonUtils.getJsonNode(snapDb,ConfigHandler.CONFIG_KEY);
-		return (config.has(ConfigHandler.DS_SNAPSHOTS_KEY) && config.get(ConfigHandler.DS_SNAPSHOTS_KEY).textValue().equals("true"));
+		return (config.has(ConfigHandler.DS_SNAPSHOTS_KEY) &&
+				config.get(ConfigHandler.DS_SNAPSHOTS_KEY).textValue().equals("true"));
 	}
 
 	private boolean hasDiffsForcingReload(final JsonNode newSnapDb, final JsonNode existingConfig) throws JsonUtilsException {

@@ -825,18 +825,22 @@ public class ConfigHandler {
 			getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
 			AnonymousIp.getCurrentConfig().enabled = true;
 			LOGGER.debug("new Anonymous Blocking in use, scheduling service updaters and enabling feature");
-		} else {
-			deliveryServices = dsep.getUpdateEvents().values();
-			if (findFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
-				getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
-				getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
-				AnonymousIp.getCurrentConfig().enabled = true;
-				LOGGER.debug("added Anonymous Blocking in use, scheduling service updaters and enabling feature");
-			} else if (!AnonymousIp.getCurrentConfig().enabled) {
-				LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
-				getAnonymousIpConfigUpdater().cancelServiceUpdater();
-				getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
-			}
+			return;
+		}
+
+		deliveryServices = dsep.getUpdateEvents().values();
+		if (findFirst(deliveryServices, ds -> ds.isAnonymousIpEnabled()).isPresent()) {
+			getAnonymousIpConfigUpdater().setDataBaseURL(configUrl, interval);
+			getAnonymousIpDatabaseUpdater().setDataBaseURL(databaseUrl, interval);
+			AnonymousIp.getCurrentConfig().enabled = true;
+			LOGGER.debug("added Anonymous Blocking in use, scheduling service updaters and enabling feature");
+			return;
+		}
+
+		if (!AnonymousIp.getCurrentConfig().enabled) {
+			LOGGER.debug("No DS using anonymous ip blocking - disabling feature");
+			getAnonymousIpConfigUpdater().cancelServiceUpdater();
+			getAnonymousIpDatabaseUpdater().cancelServiceUpdater();
 		}
 	}
 

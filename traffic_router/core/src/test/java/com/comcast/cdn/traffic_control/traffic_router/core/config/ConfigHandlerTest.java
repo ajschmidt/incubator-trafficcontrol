@@ -284,9 +284,9 @@ public class ConfigHandlerTest {
     @Test
     public void testParseLocalizationMethods() throws Exception {
 	    LocalizationMethod[] allMethods = new LocalizationMethod[]{
-			    LocalizationMethod.CZ,
-			    LocalizationMethod.DEEP_CZ,
-			    LocalizationMethod.GEO,
+		    LocalizationMethod.CZ,
+		    LocalizationMethod.DEEP_CZ,
+		    LocalizationMethod.GEO,
 	    };
 	    Set<LocalizationMethod> expected = new HashSet<>();
 	    expected.addAll(Arrays.asList(allMethods));
