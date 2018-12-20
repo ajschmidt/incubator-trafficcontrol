@@ -286,11 +286,12 @@ public class SnapshotEventsProcessor {
 
 				final JsonNode newService = newDeliveryServices.get(deliveryServiceId);
 
-				if (newService != null && isUpdated(newService, compDeliveryService)) {
-					addEvent(updateEvents, newService, deliveryServiceId);
-				} else {
+				if (newService == null) {
 					LOGGER.info(("deleted Delivery Service = "+deliveryServiceId));
 					addEvent(deleteEvents, compDeliveryService, deliveryServiceId);
+				}
+				if (newService != null && isUpdated(newService, compDeliveryService)) {
+					addEvent(updateEvents, newService, deliveryServiceId);
 				}
 			}
 		}
@@ -299,9 +300,8 @@ public class SnapshotEventsProcessor {
 		final Iterator<String> newServiceIter = newDeliveryServices.fieldNames();
 		while (newServiceIter.hasNext()) {
 			final String deliveryServiceId = newServiceIter.next();
-			final JsonNode newDsJson = JsonUtils.getJsonNode(newDeliveryServices, deliveryServiceId);
 			if (!existingIds.contains(deliveryServiceId)) {
-				addEvent(creationEvents, newDsJson, deliveryServiceId);
+				addEvent(creationEvents, JsonUtils.getJsonNode(newDeliveryServices, deliveryServiceId), deliveryServiceId);
 			}
 		}
 	}

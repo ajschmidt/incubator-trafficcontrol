@@ -82,7 +82,13 @@ public class SnapshotEventsProcessorTest {
 				snapEvents.shouldLoadAll());
 		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
 		snapEvents = SnapshotEventsProcessor.diffCrConfigs(baselineJo, baselineJo);
-		assertThat("18 Delivery services should have been loaded but there were only "+snapEvents.getCreationEvents().size(), snapEvents.getCreationEvents().size() == 18);
+		assertThat("No new, updated or deleted delivery services should have been loaded beacause the snapshots were " +
+						"the same: New = " + snapEvents.getCreationEvents().size() + ", updated = "+ snapEvents.getUpdateEvents().size() + ", deleted = "+ snapEvents.getDeleteEvents().size(),
+				(snapEvents.getCreationEvents().size() == 0 && snapEvents.getUpdateEvents().size() == 0 && snapEvents.getDeleteEvents().size() == 0));
+		assertThat("No other events should have been loaded beacause the snapshots were the same: mapping = " +
+						snapEvents.getMappingEvents().size()+ ", cache = "+ snapEvents.getDeleteCacheEvents().size() +
+						", ssl = "+ snapEvents.getSSLEnabledChangeEvents().size(),
+				(snapEvents.getMappingEvents().size() == 0 && snapEvents.getDeleteCacheEvents().size() == 0 && snapEvents.getSSLEnabledChangeEvents().size() == 0));
 	}
 
 	@Test

@@ -193,6 +193,7 @@
 						<id>external</id>
 						<goals>
 							<goal>integration-test</goal>
+							<goal>verify</goal>
 						</goals>
 						<configuration>
 							<argLine>-Djava.library.path=${java.library.path}</argLine> <!-- This needs to be parameterized -->
@@ -204,9 +205,9 @@
 					</execution>
 					<execution>
 						<id>integration</id>
+						<phase>install</phase>
 						<goals>
 							<goal>integration-test</goal>
-							<goal>verify</goal>
 						</goals>
 						<configuration>
 							<argLine>-Djava.library.path=${java.library.path}</argLine> <!-- This needs to be parameterized -->
