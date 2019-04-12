@@ -50,7 +50,7 @@ import java.util.Set;
 import java.util.Iterator;
 import java.util.concurrent.atomic.AtomicInteger;
 
-@SuppressWarnings({"PMD.TooManyFields","PMD.CyclomaticComplexity", "PMD.AvoidDuplicateLiterals"})
+@SuppressWarnings({"PMD.TooManyFields","PMD.CyclomaticComplexity", "PMD.AvoidDuplicateLiterals","PMD.ExcessivePublicCount"})
 public class DeliveryService {
 	private static final Logger LOGGER = Logger.getLogger(DeliveryService.class);
 	private final String id;

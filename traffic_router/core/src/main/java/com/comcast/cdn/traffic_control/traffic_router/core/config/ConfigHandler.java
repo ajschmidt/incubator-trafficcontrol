@@ -142,7 +142,6 @@ public class ConfigHandler {
 		isProcessing.set(true);
 		LOGGER.debug("Entered processConfig");
 		if (snapJson == null) {
-			trafficRouterManager.setCacheRegister(null);
 			cancelled.set(false);
 			isProcessing.set(false);
 			publishStatusQueue.clear();
