@@ -533,7 +533,23 @@ public final class ZoneManager extends Resolver {
 
 		for (final String domain : zoneMap.keySet()) {
 			if (superRecords != null && !superRecords.isEmpty()) {
-				zoneMap.get(domain).addAll(superRecords);
+				final List<Record> recholder = zoneMap.get(domain);
+				final List<Record> matchHolder = new ArrayList<>();
+				recholder.replaceAll( record -> {
+					for ( final Record superRec : superRecords) {
+						if (record.getName().equals(superRec.getName()) && record.getType() == superRec.getType()) {
+							matchHolder.add(superRec);
+							return superRec;
+						}
+					}
+					return record;
+				});
+
+				superRecords.forEach(record -> {
+					if (!matchHolder.contains(record)){
+						recholder.add(record);
+					}
+				});
 			}
 
 			records.addAll(createZone(domain, zoneMap, dsMap, tr, zc, dzc, initExecutor, hostname));

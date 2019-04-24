@@ -74,9 +74,9 @@ public class ConfigHandler {
 	private static long lastSnapshotTimestamp = 0;
 	private static final Object configSync = new Object();
 	final static String DS_SNAPSHOTS_KEY = "deliveryservice.snapshots";
-	final static String CONTENT_SERVERS_KEY = "contentServers";
-	final static String DELIVERY_SERVICES_KEY = "deliveryServices";
-	final static String CONFIG_KEY = "config";
+	public final static String CONTENT_SERVERS_KEY = "contentServers";
+	public final static String DELIVERY_SERVICES_KEY = "deliveryServices";
+	public final static String CONFIG_KEY = "config";
 	final static String DS_URL = "DS_URL";
 	final static String NOT_DS_URL = "NOT_DS_URL";
 

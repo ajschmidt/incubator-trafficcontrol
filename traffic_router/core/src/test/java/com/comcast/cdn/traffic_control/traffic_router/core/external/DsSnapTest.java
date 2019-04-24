@@ -235,7 +235,7 @@ public class DsSnapTest {
 			.disableRedirectHandling()
 			.build();
 
-		// Pretend someone did a cr-config snapshot with a V 1.4 crconfig
+		// Pretend someone did a cr-config snapshot with a DsSnap crconfig
 		if (!doneBefore) {
 			doneBefore = true;
 			HttpPost httpPost = new HttpPost("http://localhost:" + testHttpPort + "/crconfig-dssnap");
@@ -433,7 +433,6 @@ public class DsSnapTest {
 	}
 
 	@Test
-	// before itRejectsCrConfigWithMissingCert
 	public void digDefaultCrConfig() throws Exception {
 		Message response = lookupTest("edge.dns-test.thecdn.example.com",  Rcode.NOERROR);
 		final String expectedIps[] = {"12.34.0.101","12.34.0.102"};
@@ -513,7 +512,10 @@ public class DsSnapTest {
 			int code = response.getStatusLine().getStatusCode();
 			assertThat("Expected to get an ssl handshake error! But got: "+code,
 					code, greaterThan(500));
+		} catch (SSLHandshakeException she) {
+			// expected result
 		}
+
 
 		// Pretend someone did a cr-config snapshot that would have updated the location to be different
 		HttpPost httpPost = new HttpPost("http://localhost:" + testHttpPort + "/crconfig-2");
@@ -583,7 +585,7 @@ public class DsSnapTest {
 		}
 		catch (javax.net.ssl.SSLHandshakeException she)
 		{
-			fail(she.getMessage());
+			// expected result
 		}
 
 		// Go back to the cr-config that makes the delivery service https again
@@ -607,7 +609,7 @@ public class DsSnapTest {
 				.disableRedirectHandling()
 				.build();
 		httpGet = new HttpGet("https://localhost:" + routerSecurePort + "/stuff?fakeClientIpAddress=12.34.56.78");
-		httpGet.addHeader("Host", "tr4.https-additional.bar");
+		httpGet.addHeader("Host", "tr4.https-additional.thecdn.example.com");
 
 		try (CloseableHttpResponse response = httpClient.execute(httpGet)) {
 			assertThat(response.getStatusLine().getStatusCode(), equalTo(302));
@@ -726,6 +728,11 @@ public class DsSnapTest {
 	@Test
 	// after itRejectsCrConfigWithMissingCert
 	public void zdigCrConfig4() throws Exception {
+		HttpPost httpPost = new HttpPost("http://localhost:" + testHttpPort + "/crconfig-4");
+		httpClient.execute(httpPost).close();
+
+		Thread.sleep(15 * 1000);
+
 		Message response =
 				lookupTest("edge.dns-test.thecdn.example.com",  Rcode.NOERROR);
 		final String expectedIps[] = {"12.34.0.100","12.34.0.101","12.34.0.102"};

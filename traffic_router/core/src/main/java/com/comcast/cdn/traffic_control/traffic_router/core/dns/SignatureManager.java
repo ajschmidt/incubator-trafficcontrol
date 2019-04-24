@@ -60,11 +60,21 @@ public final class SignatureManager {
 
 	public SignatureManager(final ZoneManager zoneManager, final CacheRegister cacheRegister, final TrafficOpsUtils trafficOpsUtils, final TrafficRouterManager trafficRouterManager) {
 		this.trafficRouterManager = trafficRouterManager;
+		init(zoneManager, cacheRegister, trafficOpsUtils);
+	}
+
+	SignatureManager(final TrafficRouterManager trafficRouterManager){
+		this.trafficRouterManager = trafficRouterManager;
+	}
+
+	public void init(final ZoneManager zoneManager, final CacheRegister cacheRegister,
+	                 final TrafficOpsUtils trafficOpsUtils) {
 		this.setCacheRegister(cacheRegister);
 		this.setTrafficOpsUtils(trafficOpsUtils);
 		this.setZoneManager(zoneManager);
 		initKeyMap();
 	}
+
 
 	protected void destroy() {
 		if (keyMaintenanceExecutor != null) {
@@ -76,7 +86,7 @@ public final class SignatureManager {
 		updateKeyMap(false);
 	}
 
-	private void initKeyMap() {
+	void initKeyMap() {
 		updateKeyMap(true);
 	}
 
@@ -191,7 +201,7 @@ public final class SignatureManager {
 		};
 	}
 
-	private List<String> hasNewKeys(final Map<String, List<DnsSecKeyPair>> keyMap,
+	List<String> hasNewKeys(final Map<String, List<DnsSecKeyPair>> keyMap,
 	                                final Map<String, List<DnsSecKeyPair>> newKeyMap) {
 		final ArrayList<String> changedKeys = new ArrayList<>();
 		for (final String key : newKeyMap.keySet()) {
@@ -576,7 +586,7 @@ public final class SignatureManager {
 		this.expirationMultiplier = expirationMultiplier;
 	}
 
-	private ZoneManager getZoneManager() {
+	ZoneManager getZoneManager() {
 		return zoneManager;
 	}
 
@@ -594,5 +604,9 @@ public final class SignatureManager {
 
 	public void setExpiredKeyAllowed(final boolean expiredKeyAllowed) {
 		this.expiredKeyAllowed = expiredKeyAllowed;
+	}
+
+	Map<String, List<DnsSecKeyPair>> getKeyMap() {
+		return keyMap;
 	}
 }

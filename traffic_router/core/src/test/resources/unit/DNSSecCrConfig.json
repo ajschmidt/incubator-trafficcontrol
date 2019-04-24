@@ -15,7 +15,8 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-001": {
@@ -34,7 +35,7 @@
       "deliveryServices": {
         "https-only-test": ["edge-cache-001.https-only-test.thecdn.example.com"],
         "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge.dns-test.thecdn.example.com"]
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-002": {
@@ -52,8 +53,8 @@
       "interfaceName": "bond0",
       "deliveryServices": {
         "https-only-test": ["edge-cache-002.https-only-test.thecdn.example.com"],
-        "http-only-test": ["edge-cache-002.http-only-test.thecdn.example.com"],
-        "dns-test": ["edge.dns-test.thecdn.example.com"]
+        "http-only-test": ["edge-cache-001.http-only-test.thecdn.example.com"],
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-010": {
@@ -77,7 +78,7 @@
           "edge-cache-010.steering-target-1-b-b.thecdn.example.com"
         ]
       }
-    },
+    },    
     "edge-cache-011": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
@@ -97,7 +98,8 @@
         "steering-target-1": [
           "edge-cache-011.steering-target-1.thecdn.example.com",
           "edge-cache-011.steering-target-1-b-b.thecdn.example.com"
-        ]
+        ],
+        "dns-test": ["edge-cache-001.dns-test.thecdn.example.com"]
       }
     },
     "edge-cache-012": {
@@ -144,7 +146,7 @@
         "steering-target-4": ["edge-cache-020.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-020.steering-target-3.thecdn.example.com"]
       }
-    },
+    },    
     "edge-cache-021": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
@@ -219,7 +221,7 @@
         "steering-target-4": ["edge-cache-030.steering-target-4.thecdn.example.com"],
         "steering-target-3": ["edge-cache-030.steering-target-3.thecdn.example.com"]
       }
-    },
+    },    
     "edge-cache-031": {
       "type": "EDGE",
       "profile": "EDGE_STATIC",
@@ -487,7 +489,7 @@
       "location": "dc-chicago",
       "ip6": "2001:dead:beef:123:1::2",
       "api.port": "3333",
-      "fqdn": "testing-tr-02.thecdn.example.com",
+      "fqdn": "testing-tr-02.cdn.example.com",
       "ip": "12.34.20.2",
       "profile": "ROUTER_TEST"
     },
@@ -497,7 +499,7 @@
       "location": "dc-chicago",
       "ip6": "2001:dead:beef:123:1::1",
       "api.port": "3333",
-      "fqdn": "testing-tr-01.thecdn.example.com",
+      "fqdn": "testing-tr-01.cdn.example.com",
       "ip": "12.34.20.1",
       "profile": "ROUTER_TEST"
     }
@@ -524,9 +526,7 @@
   },
   "deliveryServices": {
     "https-only-test": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
-      "modified": "2018-11-09T01:46:39.283473Z",
       "protocol": {
         "acceptHttp" : "false",
         "acceptHttps" : "true",
@@ -569,8 +569,6 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "client-steering-test-1": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
-	  "modified": "1465088800",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -620,8 +618,6 @@
       "staticDnsEntries": []
     },
     "client-steering-test-2": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
-      "modified": "1465088800",
       "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
@@ -671,9 +667,7 @@
       "staticDnsEntries": []
     },
     "client-steering-target-1": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -723,9 +717,7 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-2": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -776,8 +768,6 @@
     },
     "client-steering-target-3": {
       "sslEnabled": "false",
-      "anyModified": "2018-11-09T01:46:39.283473Z",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -827,9 +817,7 @@
       "ip6RoutingEnabled": "false"
     },
     "client-steering-target-4": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -879,9 +867,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-1": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -943,9 +929,7 @@
       ]
     },
     "steering-target-2": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -992,9 +976,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-test-2": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1041,9 +1023,7 @@
       "ip6RoutingEnabled": "true"
     },
     "federation-test": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1098,9 +1078,7 @@
       "ip6RoutingEnabled": "true"
     },
     "steering-target-1": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1157,9 +1135,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-4": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1206,9 +1182,7 @@
       "ip6RoutingEnabled": "false"
     },
     "steering-target-3": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1256,9 +1230,7 @@
       "ip6RoutingEnabled": "false"
     },
     "http-and-https-test": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -1301,9 +1273,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-to-https-test": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "true",
-      "modified": "1465088800",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "true",
@@ -1346,9 +1316,7 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "http-only-test": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
-      "sslEnabled": "true",
-      "modified": "1465088800",
+      "sslEnabled": "false",
       "protocol": {
         "acceptHttp" : "true",
         "acceptHttps" : "false",
@@ -1391,12 +1359,11 @@
       "geolocationProvider": "maxmindGeolocationService"
     },
     "dns-test": {
-      "anyModified": "2018-11-09T01:46:39.283473Z",
       "sslEnabled": "false",
-      "modified": "1465088800",
       "bypassDestination": {
         "DNS": {
-          "ttl": "30"
+          "ttl": "30",
+          "cname": "www.example.com"
         }
       },
       "domains": [
@@ -1437,9 +1404,9 @@
   "stats": {
     "tm_version": "1.5.0-3027.8d600a8e",
     "CDN_name": "thecdn",
-    "tm_user": "admin",
+    "tm_user": "admin1",
     "tm_path": "/tools/write_crconfig/thecdn",
-    "date": 1465088800,
+    "date": 1465084800,
     "tm_host": "localhost:8889"
   },
   "edgeLocations": {
@@ -1477,7 +1444,7 @@
     }
   },
   "config": {
-    "modified": "3000-11-09T01:46:39.283473Z",
+    "deliveryservice.snapshots": "true",
     "certificate.api.url": "http://${toHostname}/api/1.3/cdns/name/${cdnName}/sslkeys.json",
     "federationmapping.polling.url": "http://${toHostname}/internal/api/1.3/federations.json",
     "federationmapping.polling.interval": "600000",
@@ -1515,6 +1482,6 @@
     "coveragezone.polling.url": "http://localhost:8889/czf.json",
     "api.auth.url": "http://${toHostname}/api/1.3/user/login",
     "certificates.polling.interval": "10000",
-    "dnssec.enabled": "false"
+    "dnssec.enabled": "true"
   }
 }
