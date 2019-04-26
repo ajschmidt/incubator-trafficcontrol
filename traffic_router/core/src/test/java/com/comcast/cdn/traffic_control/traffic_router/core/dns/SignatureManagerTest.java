@@ -64,180 +64,19 @@ import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.junit.Assert.*;
 import static org.mockito.Matchers.*;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.powermock.api.mockito.PowerMockito.*;
 
-@RunWith(PowerMockRunner.class)
-@PrepareForTest({ConfigHandler.class, CacheRegister.class, ZoneManager.class, SignatureManager.class,
-		TrafficRouterManager.class, TrafficRouter.class })
-public class SignatureManagerTest {
-    ZoneManager zoneManager;
-    SignatureManager signatureManager;
-    TrafficRouter trafficRouter;
-    CacheRegister cacheRegister;
-    Map<String, DeliveryService> changes;
-	LoadingCache<ZoneKey, Zone> dynamicZoneCache;
-	LoadingCache<ZoneKey, Zone> zoneCache;
-	DeliveryService deliveryService;
-	JsonNode newDsSnapJo = null;
-	JsonNode updateJo = null;
-	JsonNode baselineJo = null;
-	TrafficRouterManager trafficRouterManager;
+class SigManagerForTesting extends SignatureManager {
 
-    @Before
-    public void before() throws Exception {
-    	try {
-		    String resourcePath = "unit/DNSSecCrConfig.json";
-		    InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
-		    if (inputStream == null) {
-			    fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
-		    }
-		    String baseDb = IOUtils.toString(inputStream);
-
-		    resourcePath = "unit/DNSSecPlusCrConfig.json";
-		    inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
-		    if (inputStream == null) {
-			    fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
-		    }
-		    String updateDb = IOUtils.toString(inputStream);
-
-		    final ObjectMapper mapper = new ObjectMapper();
-		    assertThat(baseDb, notNullValue());
-		    assertThat(updateDb, notNullValue());
-
-		    updateJo = mapper.readTree(updateDb);
-		    assertThat(updateJo, notNullValue());
-		    baselineJo = mapper.readTree(baseDb);
-		    assertThat(baselineJo, notNullValue());
-
-		    GeolocationService geolocationService = new MaxmindGeolocationService();
-		    AnonymousIpDatabaseService anonymousIpDatabaseService = new AnonymousIpDatabaseService();
-		    FederationRegistry federationRegistry = new FederationRegistry();
-		    TrafficOpsUtils trafficOpsUtils = new TrafficOpsUtils();
-		    //trafficRouterManager = PowerMockito.spy(new TrafficRouterManager());
-		    trafficRouterManager = new TrafficRouterManager();
-		    trafficRouterManager.setAnonymousIpService(anonymousIpDatabaseService);
-		    trafficRouterManager.setGeolocationService(geolocationService);
-		    trafficRouterManager.setGeolocationService6(geolocationService);
-		    trafficRouterManager.setFederationRegistry(federationRegistry);
-		    trafficRouterManager.setTrafficOpsUtils(trafficOpsUtils);
-		    trafficRouterManager.setNameServer(new NameServer());
-		    SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor.diffCrConfigs(baselineJo, null);
-		    ConfigHandler configHandler = PowerMockito.spy(new ConfigHandler());
-		    StatTracker statTracker = new StatTracker();
-		    ZoneManager.setZoneDirectory(new File("unit/dynazones"));
-		    configHandler.setTrafficRouterManager(trafficRouterManager);
-		    configHandler.setStatTracker(statTracker);
-		    configHandler.setFederationsWatcher(new FederationsWatcher());
-		    configHandler.setSteeringWatcher(new SteeringWatcher());
-		    final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
-		    final JsonNode config = JsonUtils.getJsonNode(baselineJo, ConfigHandler.CONFIG_KEY);
-		    final JsonNode stats = JsonUtils.getJsonNode(baselineJo, "stats");
-		    cacheRegister = spy(new CacheRegister());
-		    cacheRegister.setTrafficRouters(JsonUtils.getJsonNode(baselineJo, "contentRouters"));
-		    cacheRegister.setConfig(config);
-		    cacheRegister.setStats(stats);
-		    Whitebox.invokeMethod(configHandler, "parseCertificatesConfig", config);
-		    final List<DeliveryService> deliveryServices = new ArrayList<>();
-
-		    if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
-			    deliveryServices.addAll(deliveryServiceMap.values());
-		    }
-
-		    final List<DeliveryService> httpsDeliveryServices = deliveryServices.stream()
-				    .filter(ds -> !ds.isDns() && ds.isSslEnabled()).collect(Collectors.toList());
-
-		    Whitebox.invokeMethod(configHandler, "parseDeliveryServiceMatchSets", deliveryServiceMap, cacheRegister);
-		    Whitebox.invokeMethod(configHandler, "parseLocationConfig", JsonUtils.getJsonNode(baselineJo, "edgeLocations"),
-			    cacheRegister);
-		    Whitebox.invokeMethod(configHandler, "parseCacheConfig", JsonUtils.getJsonNode(baselineJo,
-			    ConfigHandler.CONTENT_SERVERS_KEY), cacheRegister);
-		    Whitebox.invokeMethod(configHandler, "parseMonitorConfig", JsonUtils.getJsonNode(baselineJo, "monitors"));
-		    FederationsWatcher federationsWatcher = new FederationsWatcher();
-		    federationsWatcher.configure(config);
-		    configHandler.setFederationsWatcher(federationsWatcher);
-		    SteeringWatcher steeringWatcher = new SteeringWatcher();
-		    steeringWatcher.configure(config);
-		    configHandler.setSteeringWatcher(steeringWatcher);
-		    // create new TrafficRouter
-		    //trafficRouter = PowerMockito.spy( new TrafficRouter(cacheRegister, geolocationService, geolocationService,
-		    //anonymousIpDatabaseService, federationRegistry, trafficRouterManager));
-		    trafficRouter = mock(TrafficRouter.class);
-		    //zoneManager =
-				    //PowerMockito.spy(ZoneManager.initialInstance(trafficRouter,statTracker,trafficOpsUtils,trafficRouterManager));
-		    zoneManager = mock(ZoneManager.class);
-		    when(trafficRouter.getZoneManager()).thenReturn(zoneManager);
-		    //Whitebox.setInternalState(trafficRouter, "zoneManager", zoneManager);
-		    Whitebox.setInternalState(trafficRouterManager, "trafficRouter", trafficRouter);
-		    trafficRouterManager.getNameServer().setEcsEnable(JsonUtils.optBoolean(config, "ecsEnable", false));
-		    //trafficRouterManager.getTrafficRouter().configurationChanged();
-
-		    assertNotNull(zoneManager);
-		    //assertEquals(zoneManager, trafficRouterManager.getTrafficRouter().getZoneManager());
-		    zoneCache = Whitebox.getInternalState(ZoneManager.class, "zoneCache");
-		    dynamicZoneCache = Whitebox.getInternalState(ZoneManager.class, "dynamicZoneCache");
-		    signatureManager = spy(new SignatureManager(trafficRouterManager));
-		    Whitebox.setInternalState(signatureManager, "keyMap", new HashMap<String, List<DnsSecKeyPair>>() {
-		    });
-		    //assertNotNull(dynamicZoneCache);
-		    //assertNotNull(zoneCache);
-		    assertNotNull(signatureManager);
-		    doAnswer( new Answer<Object>() {
-			    public Object answer(InvocationOnMock invocation){
-				    mockInitKeymap(signatureManager.getKeyMap());
-				    return signatureManager.getKeyMap();
-			    };
-		    }).when(signatureManager).initKeyMap();
-		    signatureManager.init(zoneManager,cacheRegister, trafficOpsUtils);
-	    }
-	    catch (Exception ex)
-	    {
-	    	ex.printStackTrace();
-	    	fail(ex.getMessage());
-	    }
-    }
-
-	@Test
-	public void processDsChanges() {
-		try {
-			SnapshotEventsProcessor snapshotEventsProcessor = mock(SnapshotEventsProcessor.class);
-			deliveryService = mock(DeliveryService.class);
-			when(deliveryService.getId()).thenReturn("MockDs");
-			when(deliveryService.getDomain()).thenReturn("mockds.mockcdn.moc");
-			when(deliveryService.isDns()).thenReturn(true);
-			changes = new HashMap<>();
-			changes.put("MockDs", deliveryService);
-			when(cacheRegister.getDeliveryService(anyString())).thenReturn(deliveryService);
-			when(cacheRegister.getDeliveryServices()).thenReturn(changes);
-			Set<String> routingNames = new HashSet<>();
-			Whitebox.setInternalState(ZoneManager.class, "dnsRoutingNames", routingNames);
-			dynamicZoneCache = ZoneManager.createZoneCache(ZoneManager.ZoneCacheType.DYNAMIC);
-			Whitebox.setInternalState(ZoneManager.class, "dynamicZoneCache", dynamicZoneCache);
-			zoneCache = ZoneManager.createZoneCache(ZoneManager.ZoneCacheType.STATIC);
-			Whitebox.setInternalState(ZoneManager.class, "zoneCache", zoneCache);
-			when(snapshotEventsProcessor.getChangeEvents()).thenReturn(changes);
-			doAnswer( new Answer<Object>() {
-				public Object answer(InvocationOnMock invocation){
-					mockInitKeymap(signatureManager.getKeyMap());
-					return signatureManager.getKeyMap();
-				};
-			}).when(signatureManager).initKeyMap();
-			zoneManager.processChangeEvents(snapshotEventsProcessor);
-			//assertNotEquals("expected processDsChanges to replace the dynamicZoneCache, but it is unchanged",
-					//dynamicZoneCache, Whitebox.getInternalState(ZoneManager.class, "dynamicZoneCache"));
-			//assertNotEquals("expected processDsChanges to replace the zoneCache, but it is unchanged",
-					//zoneCache, Whitebox.getInternalState(ZoneManager.class, "zoneCache"));
-		} catch (Exception ioe) {
-			ioe.printStackTrace();
-			fail("In processDsChanges - " + ioe.toString());
-		}
+	public SigManagerForTesting(TrafficRouterManager trafficRouterManager){
+		super(trafficRouterManager);
 	}
 
-	public boolean mockInitKeymap(Map<String, List<DnsSecKeyPair>> inKeyMap ){
-		if (inKeyMap == null){
-			inKeyMap = new HashMap<>();
-		}
-		final Map<String, List<DnsSecKeyPair>> keyMap = inKeyMap;
+	@Override
+	protected JsonNode fetchKeyPairData(CacheRegister cacheRegister){
 		final String dtzskStr = "[ " +
 				"{" +
 				"\"inceptionDate\": 1545136505," +
@@ -290,47 +129,152 @@ public class SignatureManagerTest {
 				"\"UHJpdmF0ZS1rZXktZm9ybWF0OiB2MS4yCkFsZ29yaXRobTogOCAoUlNBU0hBMjU2KQpNb2R1bHVzOiBrVzVPTUNOQnpOYTl4U1FjMVA4Q2syMThjUkRUQjNUZ2c3bjU5eUpuNjVWYStucmxpdVpBeHYxaThDdS91SWRGelduSGlXYTZyNFNDMmsvTVVQdXpOUDNpa1laakd5cmk4T2NCYzluQmZDcytkSFlCa1ZRcG5SZlRRRTlhNkJZUHY4K3VjU25WVHpsYkJvYytYQ3RzaUY1aWJuOUR1TGhOdytnNG9aWDI0cmFzREtDamJMQ0JyQUlCZG0rb25FbUhxYmlsU1hFYjllNVRYY0lvZFJBUU1nZlAxSEpzNFVhclRmUldPWTY5SEJuNllKTm8rZHFWN3B3OGNSSmRicVRtTGtESFQycW1rc2dRVVhZcis1ejFDMTk3WE55NHQzbE11QWRXcGN0by8wVXN0SlU2YTE5TkxzY1AxZWpTcnZwMXBFRXB3aHJkQnY4bldGSklkMFRzaXc9PQpQdWJsaWNFeHBvbmVudDogQVFBQgpQcml2YXRlRXhwb25lbnQ6IGg0QzJXMFhPZmxRclZ5OHhxZ2U4MTY2d3Z3eUZBN0tUcWtpekxlQWg0YkEwcDZPd2tuMjlKMnRhTHhza05JUGR0dW56WUFPV3VBa0lmdTdSR1RlY0h5amJYT3BSRnpRYlpZaG5veERtcFpJSlRDdlRoQnhkOWFBSVZpaGFORnF4Nis5T3d1UE9lMVdlaVhPajErOGgzZUhMWnRjdk8wS0dPcDM1ZmgwamZ0SjdZVmU2N0tGdzJBT1lQK1dZalBFaDJpb2ZWT2NVNWorR3VYWkt3V1NHUmZzM0lRYlp5Y2Q0SHZ0YTZmbndBR2s3WGhrSkhsQ3lBeHNvMTBCNVdmZHJ5ellNZ29LV2lKOHRZUGljTVVGcVJOaHM2UElYUTI0Qk9ITjdxQmF3UTJ6QXJralB6L3B4aWRKRTc3OURHQ29zZWFxRURrdytVak93SDV5N2RzU0lDUT09ClByaW1lMTogeTVMT0ZkVXEvZjVSSFpWR3pob2ozYkF2MU5PWEJQYjk3TXZmYmF5eFNWVnJiaGJzQXFMY05XTUFCdC9mRHpMQ1FZWjBneW4zR1cxWXBENWlUOG9SZzM2V3AwZ3gwWGs4dU50NEpxalpNWE5ySDZtVWQ2T0Jydm81dzl3d0lSQWY1VDh6UWJPVkE0N1I5RHJHTjk3RlJqYkNBVW1pWFpmN3E4ZUJuczF1U2tVPQpQcmltZTI6IHR1SkdnM1lvTG0yeE9YVHQ4TEFsdWt0akJJOGhXMncxTUlXSDFuRDBHQ3ZMY2ZPSUVtQ0ZGMUt1TkluaDhqcXZ5TUNjekdyU3k0bGF5WHg0OUZDV0dFT3ZuQ1JBLzcrRGo0RVJrS1pNdkZPNmxHYWV3Mm0vSkZZVGZEblNweEpXSkJtSW9pVmJkYVhsQ2hjUjM2SkNEYUFKT1J4b29aVS9pSHN1MWd2U3NJOD0KRXhwb25lbnQxOiBWU2hSSzFManpDSlJubFZ1ckJMRlJCeEt0ZlhaSzh1Q2gwYjFiUFNicVBpaG13amRxM0NqTzNYeGNlNithYVlyR3F2N0cwODN2WncvUTEyUlZKMUwzRHpkR3BjWnQrM0dWL0grL2ZVTi9pQ3hCQ3ExSDZMM1FkSU16Z0RTNVZIUWRkNk5PNE82NXlVY2NOVVJUQmZWWUR6UnhTWWZWSldhUXM2UFMzWFdHQjA9CkV4cG9uZW50MjogTmV2emRIRlRHWlZZQ3FQU1FBUC9xN1RzaGZ5WmpqWVNYTE1TUVFUZXczMnVKM1B4YTlHdmpCZmhxelg0TzQ1WUkrMitqWHIxbWZOdXBEZWlCZzc0b2tEYXQwUHRNanJLVkhadXNtS0YvNFVFWHhyK3Rva29SVk5udlZuakpVVi94bmNNMVJvRXBHUjhhb1F3emVvdVpZd0pEQ0MzTE9VdmJWTThsUG01YmpzPQpDb2VmZmljaWVudDogTkR3ditiMnlhWnRpNVFGTXRtbFBjQmpXdW5kTWd5TXp3REs0MUUzajI0QzVoMzQ4TG55UFB2aDNTMlBjYTZpanpydTdaSVRPNjdRZFpWL04rcTdrZ0ZIbTIzZ3E0V1c4dkxqQnhWMEZFcEJCWWRZK0pvOUdjYUJxK29LekUyblFQdklMZkFka1VsMExZWkoxa1FpMTVweHZNbERJazBDempLNDNNMVphT2wwPQo=\"" +
 				"}" +
 				"]";
+
+		final String dtkpdStr = "{" +
+				"\"response\": {" +
+				"\"dns-test\": {" +
+				dtzskStr + "," +
+				dtkskStr +
+				"}" +
+				"}" +
+				"}";
 		try{
 			final ObjectMapper mapper = new ObjectMapper();
-			final JsonNode dnsTestZsk = mapper.readTree(dtzskStr);
-			final JsonNode dnsTestKsk = mapper.readTree(dtkskStr);
-			final Map<String, List<DnsSecKeyPair>> newKeyMap = new HashMap<String, List<DnsSecKeyPair>>();
-			final JsonNode config = cacheRegister.getConfig();
-			final long defaultTTL = 60l;
-			if (dnsTestKsk.isArray()){
-				for (final JsonNode keyPair : dnsTestKsk){
-					try{
-						final DnsSecKeyPair dkpw = new DnsSecKeyPairImpl(keyPair, defaultTTL);
-						if (!newKeyMap.containsKey(dkpw.getName())){
-							newKeyMap.put(dkpw.getName(), new ArrayList<>());
-						}
-						final List<DnsSecKeyPair> keyList = newKeyMap.get(dkpw.getName());
-						keyList.add(dkpw);
-						newKeyMap.put(dkpw.getName(), keyList);
-					} catch (JsonUtilsException ex){
-						fail(ex.getMessage());
-					} catch (TextParseException ex){
-						fail(ex.getMessage());
-					} catch (IOException ex){
-						fail(ex.getMessage());
-					}
-				}
-			}
-			List<String> changedKeys = null;
-			if (keyMap.isEmpty()){
-				// initial startup
-				keyMap.putAll(newKeyMap);
-			}else if (!(changedKeys = signatureManager.hasNewKeys(keyMap, newKeyMap)).isEmpty()){
-				// incoming key map has new keys
-				keyMap.putAll(newKeyMap);
-				signatureManager.getZoneManager().updateZoneCache(changedKeys);
-			} // no need to overwrite the keymap if they're the same, so no else leg
-		} catch (JsonParseException jpe){
-			fail(jpe.getMessage());
+			final JsonNode retKeyMap = mapper.readTree(dtkpdStr);
+			assertTrue(dtkpdStr, false);
+			return retKeyMap;
 		} catch (IOException ioe){
 			fail(ioe.getMessage());
+			return null;
 		}
-
-		return true;
 	}
+}
+
+@RunWith(PowerMockRunner.class)
+@PrepareForTest({ConfigHandler.class, CacheRegister.class, ZoneManager.class, SignatureManager.class,
+		TrafficRouterManager.class, TrafficRouter.class })
+public class SignatureManagerTest {
+    ZoneManager zoneManager;
+    SignatureManager signatureManager;
+    TrafficRouter trafficRouter;
+    CacheRegister cacheRegister;
+    Map<String, DeliveryService> changes;
+	LoadingCache<ZoneKey, Zone> dynamicZoneCache;
+	LoadingCache<ZoneKey, Zone> zoneCache;
+	DeliveryService deliveryService;
+	JsonNode newDsSnapJo = null;
+	JsonNode updateJo = null;
+	JsonNode baselineJo = null;
+	TrafficRouterManager trafficRouterManager;
+
+    @Before
+    public void before() throws Exception {
+    	try {
+		    String resourcePath = "unit/DNSSecCrConfig.json";
+		    InputStream inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+		    if (inputStream == null) {
+			    fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
+		    }
+		    String baseDb = IOUtils.toString(inputStream);
+
+		    resourcePath = "unit/DNSSecPlusCrConfig.json";
+		    inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+		    if (inputStream == null) {
+			    fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
+		    }
+		    String updateDb = IOUtils.toString(inputStream);
+
+		    final ObjectMapper mapper = new ObjectMapper();
+		    assertThat(baseDb, notNullValue());
+		    assertThat(updateDb, notNullValue());
+
+		    updateJo = mapper.readTree(updateDb);
+		    assertThat(updateJo, notNullValue());
+		    baselineJo = mapper.readTree(baseDb);
+		    assertThat(baselineJo, notNullValue());
+
+		    GeolocationService geolocationService = new MaxmindGeolocationService();
+		    AnonymousIpDatabaseService anonymousIpDatabaseService = new AnonymousIpDatabaseService();
+		    FederationRegistry federationRegistry = new FederationRegistry();
+		    TrafficOpsUtils trafficOpsUtils = new TrafficOpsUtils();
+		    trafficRouterManager = new TrafficRouterManager();
+		    trafficRouterManager.setAnonymousIpService(anonymousIpDatabaseService);
+		    trafficRouterManager.setGeolocationService(geolocationService);
+		    trafficRouterManager.setGeolocationService6(geolocationService);
+		    trafficRouterManager.setFederationRegistry(federationRegistry);
+		    trafficRouterManager.setTrafficOpsUtils(trafficOpsUtils);
+		    trafficRouterManager.setNameServer(new NameServer());
+		    SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor.diffCrConfigs(baselineJo, null);
+		    ConfigHandler configHandler = PowerMockito.spy(new ConfigHandler());
+		    StatTracker statTracker = new StatTracker();
+		    ZoneManager.setZoneDirectory(new File("unit/dynazones"));
+		    configHandler.setTrafficRouterManager(trafficRouterManager);
+		    configHandler.setStatTracker(statTracker);
+		    configHandler.setFederationsWatcher(new FederationsWatcher());
+		    configHandler.setSteeringWatcher(new SteeringWatcher());
+		    final Map<String, DeliveryService> deliveryServiceMap = snapshotEventsProcessor.getCreationEvents();
+		    final JsonNode config = JsonUtils.getJsonNode(baselineJo, ConfigHandler.CONFIG_KEY);
+		    final JsonNode stats = JsonUtils.getJsonNode(baselineJo, "stats");
+		    cacheRegister = spy(new CacheRegister());
+		    cacheRegister.setTrafficRouters(JsonUtils.getJsonNode(baselineJo, "contentRouters"));
+		    cacheRegister.setConfig(config);
+		    cacheRegister.setStats(stats);
+		    Whitebox.invokeMethod(configHandler, "parseCertificatesConfig", config);
+		    final List<DeliveryService> deliveryServices = new ArrayList<>();
+
+		    if (deliveryServiceMap != null && !deliveryServiceMap.values().isEmpty()) {
+			    deliveryServices.addAll(deliveryServiceMap.values());
+		    }
+
+		    final List<DeliveryService> httpsDeliveryServices = deliveryServices.stream()
+				    .filter(ds -> !ds.isDns() && ds.isSslEnabled()).collect(Collectors.toList());
+
+		    Whitebox.invokeMethod(configHandler, "parseDeliveryServiceMatchSets", deliveryServiceMap, cacheRegister);
+		    Whitebox.invokeMethod(configHandler, "parseLocationConfig", JsonUtils.getJsonNode(baselineJo, "edgeLocations"),
+			    cacheRegister);
+		    Whitebox.invokeMethod(configHandler, "parseCacheConfig", JsonUtils.getJsonNode(baselineJo,
+			    ConfigHandler.CONTENT_SERVERS_KEY), cacheRegister);
+		    Whitebox.invokeMethod(configHandler, "parseMonitorConfig", JsonUtils.getJsonNode(baselineJo, "monitors"));
+		    //FederationsWatcher federationsWatcher = new FederationsWatcher();
+		    //federationsWatcher.configure(config);
+		    //configHandler.setFederationsWatcher(federationsWatcher);
+		    //SteeringWatcher steeringWatcher = new SteeringWatcher();
+		    //steeringWatcher.configure(config);
+		    //configHandler.setSteeringWatcher(steeringWatcher);
+		    // create new TrafficRouter
+		    //trafficRouter = PowerMockito.spy( new TrafficRouter(cacheRegister, geolocationService, geolocationService,
+		    //anonymousIpDatabaseService, federationRegistry, trafficRouterManager));
+		    trafficRouter = mock(TrafficRouter.class);
+		    //zoneManager =
+				    //PowerMockito.spy(ZoneManager.initialInstance(trafficRouter,statTracker,trafficOpsUtils,trafficRouterManager));
+		    zoneManager = mock(ZoneManager.class);
+		    when(trafficRouter.getZoneManager()).thenReturn(zoneManager);
+		    Whitebox.setInternalState(trafficRouterManager, "trafficRouter", trafficRouter);
+		    trafficRouterManager.getNameServer().setEcsEnable(JsonUtils.optBoolean(config, "ecsEnable", false));
+		    assertNotNull(zoneManager);
+		    zoneCache = Whitebox.getInternalState(ZoneManager.class, "zoneCache");
+		    dynamicZoneCache = Whitebox.getInternalState(ZoneManager.class, "dynamicZoneCache");
+		    //signatureManager = spy(new SigManagerForTesting(trafficRouterManager));
+		    signatureManager = new SigManagerForTesting(trafficRouterManager);
+		    assertNotNull(signatureManager);
+		    signatureManager.init(zoneManager,cacheRegister, trafficOpsUtils);
+	    }
+	    catch (Exception ex)
+	    {
+	    	ex.printStackTrace();
+	    	fail(ex.getMessage());
+	    }
+    }
+
+    @Test
+    public void verifyInitialState() {
+	    verify(zoneManager, never()).rebuildZoneCache();
+	    verify(zoneManager, never()).updateZoneCache(anyList());
+    }
+
+    //@Test
+    //public void snapNewDNSDs ()
+    //{
+
+    //}
 }

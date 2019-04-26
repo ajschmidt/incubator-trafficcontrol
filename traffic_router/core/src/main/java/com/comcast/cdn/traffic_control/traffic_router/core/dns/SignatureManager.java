@@ -45,7 +45,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 
-public final class SignatureManager {
+public class SignatureManager {
 	private static final Logger LOGGER = Logger.getLogger(SignatureManager.class);
 	private int expirationMultiplier;
 	private CacheRegister cacheRegister;
@@ -67,7 +67,7 @@ public final class SignatureManager {
 		this.trafficRouterManager = trafficRouterManager;
 	}
 
-	public void init(final ZoneManager zoneManager, final CacheRegister cacheRegister,
+	public final void init(final ZoneManager zoneManager, final CacheRegister cacheRegister,
 	                 final TrafficOpsUtils trafficOpsUtils) {
 		this.setCacheRegister(cacheRegister);
 		this.setTrafficOpsUtils(trafficOpsUtils);
@@ -86,11 +86,11 @@ public final class SignatureManager {
 		updateKeyMap(false);
 	}
 
-	void initKeyMap() {
+	final void initKeyMap() {
 		updateKeyMap(true);
 	}
 
-	private void updateKeyMap(final boolean reloadAll) {
+	private final void updateKeyMap(final boolean reloadAll) {
 		synchronized(SignatureManager.class) {
 			final JsonNode config = cacheRegister.getConfig();
 
@@ -159,7 +159,6 @@ public final class SignatureManager {
 											final List<DnsSecKeyPair> keyList = newKeyMap.get(dkpw.getName());
 											keyList.add(dkpw);
 											newKeyMap.put(dkpw.getName(), keyList);
-
 											LOGGER.debug("Added " + dkpw.toString() + " to incoming keyList");
 										} catch (JsonUtilsException ex) {
 											LOGGER.fatal("JsonUtilsException caught while parsing key for " + keyPair, ex);
@@ -229,7 +228,7 @@ public final class SignatureManager {
 		return changedKeys;
 	}
 
-	private JsonNode fetchKeyPairData(final CacheRegister cacheRegister) {
+	protected JsonNode fetchKeyPairData(final CacheRegister cacheRegister) {
 		if (!isDnssecEnabled()) {
 			return null;
 		}
