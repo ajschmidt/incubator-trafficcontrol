@@ -228,7 +228,7 @@ public final class ZoneManager extends Resolver {
 		setTopLevelDomain(new Name(tld));
 	}
 
-	private void initSignatureManager(final CacheRegister cacheRegister, final TrafficOpsUtils trafficOpsUtils,
+	void initSignatureManager(final CacheRegister cacheRegister, final TrafficOpsUtils trafficOpsUtils,
 	                                  final TrafficRouterManager trafficRouterManager) {
 		final SignatureManager sm = new SignatureManager(this, cacheRegister, trafficOpsUtils, trafficRouterManager);
 		ZoneManager.signatureManager = sm;
@@ -437,7 +437,7 @@ public final class ZoneManager extends Resolver {
 					final boolean writeZone = (cacheType == ZoneCacheType.STATIC) ? true : false;
 
 					public Zone load(final ZoneKey zoneKey) throws IOException, GeneralSecurityException {
-						LOGGER.debug("loading " + cacheType + " " + zoneKey.getClass().getSimpleName() + " " + zoneKey
+						LOGGER.info("loading " + cacheType + " " + zoneKey.getClass().getSimpleName() + " " + zoneKey
 								.getName());
 						return loadZone(zoneKey, writeZone);
 					}
@@ -550,6 +550,7 @@ public final class ZoneManager extends Resolver {
 						recholder.add(record);
 					}
 				});
+				zoneMap.replace(domain, recholder);
 			}
 
 			records.addAll(createZone(domain, zoneMap, dsMap, tr, zc, dzc, initExecutor, hostname));

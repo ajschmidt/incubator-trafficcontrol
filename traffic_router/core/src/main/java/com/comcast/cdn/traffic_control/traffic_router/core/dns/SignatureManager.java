@@ -159,7 +159,7 @@ public class SignatureManager {
 											final List<DnsSecKeyPair> keyList = newKeyMap.get(dkpw.getName());
 											keyList.add(dkpw);
 											newKeyMap.put(dkpw.getName(), keyList);
-											LOGGER.debug("Added " + dkpw.toString() + " to incoming keyList");
+											LOGGER.info("Added " + dkpw.toString() + " to incoming keyList");
 										} catch (JsonUtilsException ex) {
 											LOGGER.fatal("JsonUtilsException caught while parsing key for " + keyPair, ex);
 										} catch (TextParseException ex) {
@@ -178,7 +178,7 @@ public class SignatureManager {
 							keyMap = newKeyMap;
 						} else if (!(changedKeys = hasNewKeys(keyMap, newKeyMap)).isEmpty()) {
 							// incoming key map has new keys
-							LOGGER.debug("Found new keys in incoming keyMap; rebuilding zone caches");
+							LOGGER.info("Found new keys in incoming keyMap; rebuilding zone caches");
 							trafficRouterManager.trackEvent("newDnsSecKeysFound");
 							keyMap = newKeyMap;
 
