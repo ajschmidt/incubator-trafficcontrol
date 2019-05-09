@@ -107,7 +107,7 @@ public final class ZoneManager extends Resolver {
 		DYNAMIC, STATIC
 	}
 
-	private ZoneManager( final TrafficRouter tr, final StatTracker statTracker, final TrafficOpsUtils trafficOpsUtils,
+	ZoneManager( final TrafficRouter tr, final StatTracker statTracker, final TrafficOpsUtils trafficOpsUtils,
 	                    final TrafficRouterManager trafficRouterManager) throws IOException {
 		initDnsRoutingNames(tr.getCacheRegister());
 		initTopLevelDomain(tr.getCacheRegister());
@@ -117,7 +117,7 @@ public final class ZoneManager extends Resolver {
 		this.statTracker = statTracker;
 	}
 
-	private ZoneManager( final TrafficRouter trafficRouter,  final StatTracker statTracker) {
+	ZoneManager( final TrafficRouter trafficRouter,  final StatTracker statTracker) {
 		this.trafficRouter = trafficRouter;
 		this.statTracker = statTracker;
 	}
@@ -125,7 +125,7 @@ public final class ZoneManager extends Resolver {
 	public static void destroy() {
 		zoneMaintenanceExecutor.shutdownNow();
 		zoneExecutor.shutdownNow();
-		signatureManager.destroy();
+		getSignatureManager().destroy();
 	}
 
 	/**
@@ -186,7 +186,7 @@ public final class ZoneManager extends Resolver {
 			});
 		});
 
-		signatureManager.refreshKeyMap();
+		getSignatureManager().refreshKeyMap();
 		updateZoneCache(snapshotEvents.getChangeEvents());
 	}
 
@@ -199,7 +199,7 @@ public final class ZoneManager extends Resolver {
 		final Map<String, DeliveryService> deliveryServices = cacheRegister.getDeliveryServices();
 		final Map<String, DeliveryService> targetDServices = new HashMap<>();
 		deliveryServices.forEach((dsid, ds) -> {
-			if (zoneKeys.contains(ds.getDomain())) {
+			if (zoneKeys.contains(ds.getDomain()+'.')) {
 				targetDServices.putIfAbsent(dsid, ds);
 			}
 		});
@@ -250,7 +250,7 @@ public final class ZoneManager extends Resolver {
 			final ExecutorService initExecutor = Executors.newFixedThreadPool(calcThreadPoolSize(config));
 
 			try {
-				LOGGER.info("Refreshing zone data");
+				LOGGER.info("Refreshing zone data for these: "+changeEvents.keySet().toString());
 				final Map<String, List<Record>> zoneMap = new HashMap<String, List<Record>>();
 				final Map<String, DeliveryService> dsMap = new HashMap<String, DeliveryService>();
 
@@ -277,6 +277,10 @@ public final class ZoneManager extends Resolver {
 			ZoneManager.dynamicZoneCache = dzc;
 			ZoneManager.zoneCache = zc;
 		}
+	}
+
+	public static SignatureManager getSignatureManager() {
+		return signatureManager;
 	}
 
 	private static int calcThreadPoolSize(final JsonNode config) {
@@ -369,7 +373,7 @@ public final class ZoneManager extends Resolver {
 
 				for (final ZoneKey zoneKey : cache.asMap().keySet()) {
 					try {
-						if (signatureManager.needsRefresh(type, zoneKey, refreshInterval)) {
+						if (getSignatureManager().needsRefresh(type, zoneKey, refreshInterval)) {
 							cache.refresh(zoneKey);
 						}
 					} catch (RuntimeException ex) {
@@ -460,13 +464,13 @@ public final class ZoneManager extends Resolver {
 
 	public static Zone loadZone(final ZoneKey zoneKey, final boolean writeZone) throws IOException,
 			GeneralSecurityException {
-		LOGGER.debug("Attempting to load " + zoneKey.getName());
+		LOGGER.info("Attempting to load " + zoneKey.getName());
 		final Name name = zoneKey.getName();
 		List<Record> records = zoneKey.getRecords();
 		zoneKey.updateTimestamp();
 
 		if (zoneKey instanceof SignedZoneKey) {
-			records = signatureManager.signZone(name, records, (SignedZoneKey) zoneKey);
+			records = getSignatureManager().signZone(name, records, (SignedZoneKey) zoneKey);
 		}
 
 		final Zone zone = new Zone(name, records.toArray(new Record[records.size()]));
@@ -599,13 +603,13 @@ public final class ZoneManager extends Resolver {
 
 		try {
 			final long maxTTL = ZoneUtils.getMaximumTTL(list);
-			records.addAll(signatureManager.generateDSRecords(name, maxTTL));
-			list.addAll(signatureManager.generateDNSKEYRecords(name, maxTTL));
+			records.addAll(getSignatureManager().generateDSRecords(name, maxTTL));
+			list.addAll(getSignatureManager().generateDNSKEYRecords(name, maxTTL));
 			initExecutor.execute(new Runnable() {
 				@Override
 				public void run() {
 					try {
-						final Zone zone = zc.get(signatureManager
+						final Zone zone = zc.get(getSignatureManager()
 								.generateZoneKey(name, list)); // cause the zone to be loaded into the new cache
 						final boolean primeDynCache = JsonUtils
 								.optBoolean(config, "dynamic.cache.primer.enabled", true);
@@ -641,7 +645,7 @@ public final class ZoneManager extends Resolver {
 									final List<InetRecord> inetRecords = tr.inetRecordsFromCaches(ds, caches, request);
 
 									if (!pset.contains(records)) {
-										fillDynamicZone(dzc, zone, edgeName, inetRecords, signatureManager
+										fillDynamicZone(dzc, zone, edgeName, inetRecords, getSignatureManager()
 												.isDnssecEnabled());
 										pset.add(inetRecords);
 										LOGGER.info("Primed " + ds.getId() + " @ " + cacheLocation.getId() + "; " +
@@ -788,8 +792,7 @@ public final class ZoneManager extends Resolver {
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
 	private static Map<String, List<Record>> populateZoneMap(final Map<String, List<Record>> zoneMap,
-		final Map<String, DeliveryService> dsMap,
-		final CacheRegister data) throws IOException {
+			final Map<String, DeliveryService> dsMap, final CacheRegister data) throws IOException {
 		final Map<String, List<Record>> superDomains = new HashMap<String, List<Record>>();
 		for (final String domain : dsMap.keySet()) {
 			zoneMap.put(domain, new ArrayList<Record>());
@@ -798,13 +801,6 @@ public final class ZoneManager extends Resolver {
 			for (final DeliveryServiceReference dsr : c.getDeliveryServices()) {
 				final DeliveryService ds = data.getDeliveryService(dsr.getDeliveryServiceId());
 				if (ds == null) {
-					LOGGER.warn("Content server " + c.getFqdn() + " has delivery service " + dsr.getDeliveryServiceId() + " assigned, but the delivery service was not found. Skipping.");
-					continue;
-				}
-				final String fqdn = dsr.getFqdn();
-				final String host = dsr.getHost();
-				final String domain = dsr.getDomain();
-				if (ds == null) {
 					LOGGER.error(dsr
 							.getDeliveryServiceId() + " delivery service not found in CacheRegister. This means" +
 							" the delivery service has been removed or its name changed and the link " +
@@ -812,6 +808,9 @@ public final class ZoneManager extends Resolver {
 							".");
 					continue;
 				}
+				final String fqdn = dsr.getFqdn();
+				final String host = dsr.getHost();
+				final String domain = dsr.getDomain();
 
 				if (dsMap.containsKey(domain)) {
 					final List<Record> zholder = zoneMap.get(domain);
@@ -820,6 +819,8 @@ public final class ZoneManager extends Resolver {
 						superDomains.put(superdomain, new ArrayList<Record>());
 					}
 					if (ds.isDns() && host.equalsIgnoreCase(ds.getRoutingName())) {
+						LOGGER.info("Delivery Service: "+ds.getId()+", isDns: "+ds.isDns()+", Host: "+host+", " +
+								"RoutingName: "+ds.getRoutingName()+" doesn't need a Zone added for some reason.");
 						continue;
 					}
 					try {
@@ -834,6 +835,7 @@ public final class ZoneManager extends Resolver {
 						if (ip6 != null && ds != null && ds.isIp6RoutingEnabled()) {
 							zholder.add(new AAAARecord(name, DClass.IN, ZoneUtils.getLong(ttl, AAAA, 60), ip6));
 						}
+						LOGGER.debug("Added records for: "+ds.getId()+", - "+zholder.toString() );
 					} catch (org.xbill.DNS.TextParseException e) {
 						LOGGER.error("Caught fatal exception while generating zone data for " + fqdn + "!", e);
 					}
@@ -958,7 +960,7 @@ public final class ZoneManager extends Resolver {
 
 			if (recordsAdded > 0) {
 				try {
-					final ZoneKey zoneKey = signatureManager
+					final ZoneKey zoneKey = getSignatureManager()
 							.generateDynamicZoneKey(staticZone.getOrigin(), records, dnssecRequest);
 					final Zone zone = dzc.get(zoneKey);
 					return zone;

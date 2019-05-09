@@ -35,7 +35,7 @@ public class SnapshotEventsProcessor {
 	final private Map<String, DeliveryService> updateEvents = new HashMap<>();
 	final private Map<String, DeliveryService> deleteEvents = new HashMap<>();
 	final private Map<String, Cache> mappingEvents = new HashMap<>();
-	final private List<String> serverModEvents = new ArrayList<>();
+	//final private List<String> serverModEvents = new ArrayList<>();
 
 	public List<String> getDeleteCacheEvents() {
 		return deleteCacheEvents;
@@ -147,7 +147,12 @@ public class SnapshotEventsProcessor {
 
 	private void diffCacheMappings(final JsonNode newSnapDb, final JsonNode existingDb) throws JsonUtilsException,
 			ParseException {
-		setExistingConfig(JsonUtils.getJsonNode(existingDb, ConfigHandler.CONFIG_KEY));
+		if (existingDb != null){
+			setExistingConfig(JsonUtils.getJsonNode(existingDb, ConfigHandler.CONFIG_KEY));
+		} else {
+			setExistingConfig(JsonUtils.getJsonNode(newSnapDb, ConfigHandler.CONFIG_KEY));
+		}
+
 		final JsonNode newServers = JsonUtils.getJsonNode(newSnapDb, ConfigHandler.CONTENT_SERVERS_KEY);
 		final Iterator<String> newServersIter = newServers.fieldNames();
 		while (newServersIter.hasNext()) {
@@ -155,14 +160,6 @@ public class SnapshotEventsProcessor {
 			final JsonNode newCacheJson = newServers.get(cacheId);
 			if (!newCacheJson.has(ConfigHandler.DELIVERY_SERVICES_KEY)) {
 				continue;
-			}
-			final Iterator<String> dsrKeys =
-					JsonUtils.getJsonNode(newCacheJson, ConfigHandler.DELIVERY_SERVICES_KEY).fieldNames();
-			while (dsrKeys.hasNext()) {
-				final String dsrId = dsrKeys.next();
-				if (serverModEvents.contains(dsrId)) {
-					addMappingEvent(newCacheJson, cacheId);
-				}
 			}
 			if (dssLinkChangeDetected(cacheId, newCacheJson, existingDb)) {
 				addMappingEvent(newCacheJson, cacheId);

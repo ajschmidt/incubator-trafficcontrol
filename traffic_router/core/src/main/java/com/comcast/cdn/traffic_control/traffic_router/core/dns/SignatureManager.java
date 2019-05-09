@@ -54,6 +54,7 @@ public class SignatureManager {
 	private boolean dnssecEnabled = false;
 	private boolean expiredKeyAllowed = true;
 	private Map<String, List<DnsSecKeyPair>> keyMap;
+	private boolean signingInProcess = false;
 	private ProtectedFetcher fetcher = null;
 	private ZoneManager zoneManager;
 	private final TrafficRouterManager trafficRouterManager;
@@ -101,6 +102,7 @@ public class SignatureManager {
 				setExpirationMultiplier(JsonUtils.optInt(config, "signaturemanager.expiration.multiplier", 5)); // signature validity is maxTTL * this
 				final ScheduledExecutorService me = Executors.newScheduledThreadPool(1);
 				final int maintenanceInterval = JsonUtils.optInt(config, "keystore.maintenance.interval", 300); // default 300 seconds, do we calculate based on the complimentary settings for key generation in TO?
+				signingInProcess = true;
 				me.scheduleWithFixedDelay(getKeyMaintenanceRunnable(cacheRegister, reloadAll), 0, maintenanceInterval,
 						TimeUnit.SECONDS);
 
@@ -111,7 +113,7 @@ public class SignatureManager {
 				keyMaintenanceExecutor = me;
 
 				try {
-					while (keyMap == null) {
+					while (signingInProcess || keyMap == null) {
 						LOGGER.info("Waiting for DNSSEC keyMap initialization to complete");
 						Thread.sleep(2000);
 					}
@@ -172,22 +174,27 @@ public class SignatureManager {
 							}
 						}
 
-						List<String> changedKeys = null;
 						if (keyMap == null) {
 							// initial startup
 							keyMap = newKeyMap;
-						} else if (!(changedKeys = hasNewKeys(keyMap, newKeyMap)).isEmpty()) {
-							// incoming key map has new keys
-							LOGGER.info("Found new keys in incoming keyMap; rebuilding zone caches");
-							trafficRouterManager.trackEvent("newDnsSecKeysFound");
-							keyMap = newKeyMap;
+						} else {
+							final List<String> changedKeys = hasNewKeys(keyMap, newKeyMap);
+							if (!changedKeys.isEmpty()) {
+								// incoming key map has new keys
+								LOGGER.info("Found new keys in incoming keyMap; rebuilding zone caches");
+								trafficRouterManager.trackEvent("newDnsSecKeysFound");
+								keyMap = newKeyMap;
 
-							if (reloadAll) {
-								getZoneManager().rebuildZoneCache();
+								if (reloadAll) {
+									getZoneManager().rebuildZoneCache();
+								} else {
+									getZoneManager().updateZoneCache(changedKeys);
+								}
 							} else {
-								getZoneManager().updateZoneCache(changedKeys);
+								// The new keymap may have had keys removed so we'll use it instead
+								keyMap = newKeyMap;
 							}
-						} // no need to overwrite the keymap if they're the same, so no else leg
+						}
 					} else {
 						LOGGER.fatal("Unable to read keyPairData: " + keyPairData);
 					}
@@ -196,13 +203,16 @@ public class SignatureManager {
 				} catch (RuntimeException ex) {
 					LOGGER.fatal("RuntimeException caught while trying to maintain keyMap", ex);
 				}
+				finally{
+					signingInProcess = false;
+				}
 			}
 		};
 	}
 
 	List<String> hasNewKeys(final Map<String, List<DnsSecKeyPair>> keyMap,
 	                                final Map<String, List<DnsSecKeyPair>> newKeyMap) {
-		final ArrayList<String> changedKeys = new ArrayList<>();
+		final List<String> changedKeys = new ArrayList<>();
 		for (final String key : newKeyMap.keySet()) {
 			if (!keyMap.containsKey(key)) {
 				changedKeys.add(key);
@@ -505,7 +515,7 @@ public class SignatureManager {
 					final ZoneSigner zoneSigner = new ZoneSignerImpl();
 
 					final DSRecord dsRecord = zoneSigner.calculateDSRecord(kp.getDNSKEYRecord(), DSRecord.SHA256_DIGEST_ID, dsTtl);
-					LOGGER.debug(name + ": adding DS record " + dsRecord);
+					LOGGER.info(name + ": adding DS record " + dsRecord);
 					records.add(dsRecord);
 				}
 			}
@@ -523,13 +533,13 @@ public class SignatureManager {
 
 			if (kskPairs != null && zskPairs != null && !kskPairs.isEmpty() && !zskPairs.isEmpty()) {
 				for (final DnsSecKeyPair kp : kskPairs) {
-					LOGGER.debug(name + ": DNSKEY record " + kp.getDNSKEYRecord());
+					LOGGER.info(name + ": DNSKEY record " + kp.getDNSKEYRecord());
 					list.add(kp.getDNSKEYRecord());
 				}
 
 				for (final DnsSecKeyPair kp : zskPairs) {
 					// TODO: make adding zsk to parent zone configurable?
-					LOGGER.debug(name + ": DNSKEY record " + kp.getDNSKEYRecord());
+					LOGGER.info(name + ": DNSKEY record " + kp.getDNSKEYRecord());
 					list.add(kp.getDNSKEYRecord());
 				}
 			}

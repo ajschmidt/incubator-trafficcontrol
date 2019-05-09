@@ -147,7 +147,7 @@ public class ZoneManagerUnitTest {
 		    SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor.diffCrConfigs(baselineJo, null);
 		    ConfigHandler configHandler = PowerMockito.spy(new ConfigHandler());
 		    StatTracker statTracker = new StatTracker();
-		    ZoneManager.setZoneDirectory(new File("unit/dynazones"));
+		    ZoneManager.setZoneDirectory(new File("src/test/resources/unit/zonemanager"));
 		    configHandler.setTrafficRouterManager(trafficRouterManager);
 		    configHandler.setStatTracker(statTracker);
 		    configHandler.setFederationsWatcher(new FederationsWatcher());
