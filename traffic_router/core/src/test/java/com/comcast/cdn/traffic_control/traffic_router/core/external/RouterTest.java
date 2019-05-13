@@ -608,10 +608,8 @@ public class RouterTest {
 			ObjectMapper objectMapper = new ObjectMapper(new JsonFactory());
 
 			assertThat(entity.getContent(), not(nullValue()));
-			System.out.println(entity.getContent());
 
 			JsonNode json = objectMapper.readTree(entity.getContent());
-			System.out.println(json);
 
 			assertThat(json.has("location"), equalTo(true));
 			assertThat(json.get("location").asText(), isIn(validLocations));

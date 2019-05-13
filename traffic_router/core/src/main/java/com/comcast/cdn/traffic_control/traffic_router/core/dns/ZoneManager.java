@@ -507,7 +507,7 @@ public final class ZoneManager extends Resolver {
 	                                           final LoadingCache<ZoneKey, Zone> zc,
 	                                           final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor) throws
 			java.io.IOException {
-		final Map<String, List<Record>> superDomains = populateZoneMap(zoneMap, dsMap, data);
+		final Map<String, List<Record>> superDomains = populateZoneMap(zoneMap, dsMap, data, zc);
 		final List<Record> superRecords = fillZones(zoneMap, dsMap, tr, zc, dzc, initExecutor);
 		final List<Record> upstreamRecords = fillZones(superDomains, dsMap, tr, superRecords, zc, dzc, initExecutor);
 
@@ -532,13 +532,14 @@ public final class ZoneManager extends Resolver {
 	                                      final LoadingCache<ZoneKey, Zone> dzc, final ExecutorService initExecutor)
 			throws IOException {
 		final String hostname = InetAddress.getLocalHost().getHostName().replaceAll("\\..*", "");
-
 		final List<Record> records = new ArrayList<Record>();
 
 		for (final String domain : zoneMap.keySet()) {
 			if (superRecords != null && !superRecords.isEmpty()) {
 				final List<Record> recholder = zoneMap.get(domain);
 				final List<Record> matchHolder = new ArrayList<>();
+				// replace the DS records in the exiting record list for the domain with any newer one
+				// found in the superRecords
 				recholder.replaceAll( record -> {
 					for ( final Record superRec : superRecords) {
 						if (record.getName().equals(superRec.getName()) && record.getType() == superRec.getType()) {
@@ -549,6 +550,7 @@ public final class ZoneManager extends Resolver {
 					return record;
 				});
 
+				// Add any new DS records that weren't in the existing record list for the domain
 				superRecords.forEach(record -> {
 					if (!matchHolder.contains(record)){
 						recholder.add(record);
@@ -792,10 +794,10 @@ public final class ZoneManager extends Resolver {
 
 	@SuppressWarnings({"PMD.CyclomaticComplexity", "PMD.NPathComplexity"})
 	private static Map<String, List<Record>> populateZoneMap(final Map<String, List<Record>> zoneMap,
-			final Map<String, DeliveryService> dsMap, final CacheRegister data) throws IOException {
+			final Map<String, DeliveryService> dsMap, final CacheRegister data, final LoadingCache<ZoneKey, Zone> zc) throws IOException {
 		final Map<String, List<Record>> superDomains = new HashMap<String, List<Record>>();
 		for (final String domain : dsMap.keySet()) {
-			zoneMap.put(domain, new ArrayList<Record>());
+			zoneMap.put(domain, new ArrayList<>());
 		}
 		for (final Cache c : data.getCacheMap().values()) {
 			for (final DeliveryServiceReference dsr : c.getDeliveryServices()) {
@@ -816,11 +818,9 @@ public final class ZoneManager extends Resolver {
 					final List<Record> zholder = zoneMap.get(domain);
 					final String superdomain = domain.split("\\.", 2)[1];
 					if (!superDomains.containsKey(superdomain)) {
-						superDomains.put(superdomain, new ArrayList<Record>());
+						superDomains.put(superdomain, getExistingDSRecords(superdomain, zc));
 					}
 					if (ds.isDns() && host.equalsIgnoreCase(ds.getRoutingName())) {
-						LOGGER.info("Delivery Service: "+ds.getId()+", isDns: "+ds.isDns()+", Host: "+host+", " +
-								"RoutingName: "+ds.getRoutingName()+" doesn't need a Zone added for some reason.");
 						continue;
 					}
 					try {
@@ -843,6 +843,31 @@ public final class ZoneManager extends Resolver {
 			}
 		}
 		return superDomains;
+	}
+
+	private static List<Record> getExistingDSRecords(final String superdomain, final LoadingCache<ZoneKey, Zone> zc){
+		final List<Record> superRecords = new ArrayList<>();
+		if (zc == null) {
+			return superRecords;
+		}
+		final Map<ZoneKey, Zone> existingZones = zc.asMap();
+		for (final ZoneKey zoneKey : existingZones.keySet()) {
+			if (zoneKey.getName().toString(true).equals(superdomain)) {
+				final Iterator zoneIter = existingZones.get(zoneKey).iterator();
+				while (zoneIter.hasNext()){
+					final RRset rRset = (RRset) zoneIter.next();
+					final Iterator rrs = rRset.rrs();
+					while (rrs.hasNext()){
+						final Record record = (Record) rrs.next();
+						if (record.getType() == Type.DS){
+							superRecords.add(record);
+						}
+					}
+				}
+				break;
+			}
+		}
+		return superRecords;
 	}
 
 	/**

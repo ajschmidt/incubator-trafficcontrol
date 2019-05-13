@@ -203,8 +203,7 @@ public class SignatureManagerTest {
 	LoadingCache<ZoneKey, Zone> dynamicZoneCache;
 	LoadingCache<ZoneKey, Zone> zoneCache;
 	String baseDb = null;
-	JsonNode updateJo = null;
-	JsonNode baselineJo = null;
+	JsonNode baselineJo, updateJo, modDsJo = null;
 	TrafficRouterManager trafficRouterManager;
 	ConfigHandler configHandler = PowerMockito.spy(new ConfigHandler());
 	StatTracker statTracker = new StatTracker();
@@ -231,12 +230,20 @@ public class SignatureManagerTest {
 			    fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
 		    }
 		    String newDsSnap = IOUtils.toString(inputStream);
+		    resourcePath = "unit/DNSSecModDsCrConfig.json";
+		    inputStream = getClass().getClassLoader().getResourceAsStream(resourcePath);
+		    if (inputStream == null) {
+			    fail("Could not find file '" + resourcePath + "' needed for test from the current classpath as a resource!");
+		    }
+		    String modDsSnap = IOUtils.toString(inputStream);
 		    final ObjectMapper mapper = new ObjectMapper();
 		    assertThat(baseDb, notNullValue());
 		    assertThat(newDsSnap, notNullValue());
+		    assertThat(modDsSnap, notNullValue());
 
 		    baselineJo = mapper.readTree(baseDb);
 		    updateJo = mapper.readTree(newDsSnap);
+		    modDsJo = mapper.readTree(modDsSnap);
 		    assertThat(baselineJo, notNullValue());
 
 		    GeolocationService geolocationService = new MaxmindGeolocationService();
@@ -342,20 +349,79 @@ public class SignatureManagerTest {
 				containsInAnyOrder(DNS_TEST));
 	}
 
+	@Test
+	public void snapNewDNSDsAndNewKeys ()
+	{
+		Map<ZoneKey, Zone> cacheOut = null;
+		try{
+			SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor.diffCrConfigs(updateJo,
+					baselineJo);
+			cacheRegister = fillCacheRegister(cacheRegister,null, snapshotEventsProcessor, updateJo);
+			SigManagerForTesting.returnKey = SigManagerForTesting.KeyProfile.TWO;
+			when(trafficRouter, "getCacheRegister").thenReturn(cacheRegister);
+			when(zoneManager, "getTrafficRouter").thenReturn(trafficRouter);
+			signatureManager.refreshKeyMap();
+			zoneCache = Whitebox.getInternalState(ZoneManager.class, "zoneCache");
+			dynamicZoneCache = Whitebox.getInternalState(ZoneManager.class, "dynamicZoneCache");
+			cacheOut = zoneCache.asMap();
+		} catch (Exception e) {
+			fail(e.getMessage());
+		}
+
+		verify(zoneManager, atLeastOnce()).updateZoneCache(anyList());
+		Map<String, List<DnsSecKeyPair>> keyMap = signatureManager.getKeyMap();
+		assertThat("keyMap should not be null.", keyMap, notNullValue());
+		assertThat("Expected to only find a keys for dns-test and federation-test but found these keys - " +
+						keyMap.keySet(), keyMap.keySet(),
+				containsInAnyOrder(DNS_TEST, FED_TEST));
+
+		final StringBuilder keysStr = new StringBuilder("");
+		cacheOut.keySet().forEach(zoneKey -> keysStr.append(zoneKey.getName()+" "));
+		assertThat("Expected a zone for 'dns-test.thecdn.example.com.' in :"+keysStr.toString(),
+				keysStr.toString(), containsString(DNS_TEST));
+		assertThat("Expected a zone for 'federation-test.thecdn.example.com.' in :"+keysStr.toString(),
+				keysStr.toString(), containsString(FED_TEST));
+		Zone dnsTestZone = null;
+		Zone fedTestZone = null;
+		Zone tldTestZone = null;
+		for ( ZoneKey key : cacheOut.keySet()) {
+			if (key.getName().toString().equals(DNS_TEST)) {
+				dnsTestZone = cacheOut.get(key);
+			} else if (key.getName().toString().equals(FED_TEST)){
+				fedTestZone = cacheOut.get(key);
+			} else if (key.getName().toString().equals(TLD)) {
+				tldTestZone = cacheOut.get(key);
+			}
+
+			if (!(dnsTestZone == null || fedTestZone == null || tldTestZone == null)) {
+				break;
+			}
+		}
+
+		assertThat("Check DNSSec Key for "+DNS_TEST, hasNSec(dnsTestZone, DNS_TEST, Type.DNSKEY),
+				notNullValue());
+		assertThat("Check NSEC Key for "+DNS_TEST, hasNSec(dnsTestZone, DNS_TEST, Type.NSEC),
+				notNullValue());
+		assertThat("Check DNSSec Key for "+FED_TEST, hasNSec(fedTestZone, FED_TEST, Type.DNSKEY), notNullValue());
+		assertThat("Check NSEC Key for "+FED_TEST, hasNSec(fedTestZone, FED_TEST, Type.NSEC), notNullValue());
+		assertThat("Check DS record for "+DNS_TEST, hasNSec(tldTestZone, DNS_TEST, Type.DS), notNullValue());
+		assertThat("Check DS record for "+FED_TEST, hasNSec(tldTestZone, FED_TEST, Type.DS), notNullValue());
+	}
+
     @Test
-    public void snapNewDNSDsAndNewKeys ()
+    public void snapModDsAndSameKeys ()
     {
     	Map<ZoneKey, Zone> cacheOut = null;
     	try{
-		    SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor.diffCrConfigs(updateJo,
+		    SnapshotEventsProcessor snapshotEventsProcessor = SnapshotEventsProcessor.diffCrConfigs(modDsJo,
 				    baselineJo);
-		    cacheRegister = fillCacheRegister(cacheRegister,null, snapshotEventsProcessor, updateJo);
+		    cacheRegister = fillCacheRegister(cacheRegister,null, snapshotEventsProcessor, modDsJo);
+		    signatureManager.getKeyMap().remove(FED_TEST);
 		    SigManagerForTesting.returnKey = SigManagerForTesting.KeyProfile.TWO;
 		    when(trafficRouter, "getCacheRegister").thenReturn(cacheRegister);
 		    when(zoneManager, "getTrafficRouter").thenReturn(trafficRouter);
 		    signatureManager.refreshKeyMap();
 		    zoneCache = Whitebox.getInternalState(ZoneManager.class, "zoneCache");
-		    dynamicZoneCache = Whitebox.getInternalState(ZoneManager.class, "dynamicZoneCache");
 		    cacheOut = zoneCache.asMap();
 	    } catch (Exception e) {
     		fail(e.getMessage());

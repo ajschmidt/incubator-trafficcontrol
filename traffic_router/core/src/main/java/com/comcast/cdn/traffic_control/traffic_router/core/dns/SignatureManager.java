@@ -161,7 +161,7 @@ public class SignatureManager {
 											final List<DnsSecKeyPair> keyList = newKeyMap.get(dkpw.getName());
 											keyList.add(dkpw);
 											newKeyMap.put(dkpw.getName(), keyList);
-											LOGGER.info("Added " + dkpw.toString() + " to incoming keyList");
+											LOGGER.debug("Added " + dkpw.toString() + " to incoming keyList");
 										} catch (JsonUtilsException ex) {
 											LOGGER.fatal("JsonUtilsException caught while parsing key for " + keyPair, ex);
 										} catch (TextParseException ex) {
